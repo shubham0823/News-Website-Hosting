@@ -1,0 +1,96 @@
+<!-- Comments Section -->
+<div class="mt-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">Comments</h2>
+    
+    <!-- Comment Form -->
+    {% if user.is_authenticated %}
+    <form id="commentForm" class="mb-8">
+        {% csrf_token %}
+        <div>
+            <label for="commentContent" class="sr-only">Add a comment</label>
+            <textarea id="commentContent" name="content" rows="3"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Add a comment..."></textarea>
+        </div>
+        <div class="mt-2 flex justify-end">
+            <button type="submit"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Post Comment
+            </button>
+        </div>
+    </form>
+    {% else %}
+    <div class="bg-gray-50 rounded-lg p-4 text-center">
+        <p class="text-gray-600">Please <a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-800">sign in</a> to comment.</p>
+    </div>
+    {% endif %}
+    
+    <!-- Comments List -->
+    <div id="commentsList">
+        {% for comment in comments %}
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-4">
+            <div class="flex items-start space-x-4">
+                <img src="{{ comment.author.profile.avatar.url }}" alt="{{ comment.author.username }}"
+                     class="h-10 w-10 rounded-full">
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-medium text-gray-900">{{ comment.author.username }}</h3>
+                        <p class="text-sm text-gray-500">{{ comment.created_at|timesince }} ago</p>
+                    </div>
+                    <div class="mt-1 text-sm text-gray-700">
+                        {{ comment.content }}
+                    </div>
+                    {% if user.is_authenticated %}
+                    <div class="mt-2">
+                        <button class="text-sm text-gray-500 hover:text-blue-600 reply-button"
+                                data-comment-id="{{ comment.id }}">
+                            Reply
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Replies -->
+                    {% if comment.replies.exists %}
+                    <div class="mt-4 space-y-4 pl-4 border-l-2 border-gray-100">
+                        {% for reply in comment.replies.all %}
+                        <div class="flex items-start space-x-4">
+                            <img src="{{ reply.author.profile.avatar.url }}" alt="{{ reply.author.username }}"
+                                 class="h-8 w-8 rounded-full">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-sm font-medium text-gray-900">{{ reply.author.username }}</h4>
+                                    <p class="text-sm text-gray-500">{{ reply.created_at|timesince }} ago</p>
+                                </div>
+                                <div class="mt-1 text-sm text-gray-700">
+                                    {{ reply.content }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Reply Form (hidden by default) -->
+                    <form class="mt-4 hidden reply-form" data-parent-id="{{ comment.id }}">
+                        {% csrf_token %}
+                        <div>
+                            <textarea name="content" rows="2"
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Write a reply..."></textarea>
+                        </div>
+                        <div class="mt-2 flex justify-end space-x-2">
+                            <button type="button" class="text-gray-500 hover:text-gray-700 cancel-reply">Cancel</button>
+                            <button type="submit"
+                                    class="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Reply
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-gray-500 text-center">No comments yet. Be the first to comment!</p>
+        {% endfor %}
+    </div>
+</div> 

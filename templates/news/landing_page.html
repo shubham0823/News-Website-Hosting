@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+
+{% block title %}NewsHub - Latest News{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-12 gap-4 mx-0">
+    <!-- Left Sidebar - Trending Hashtags -->
+    <div class="col-span-2 sticky top-20 h-screen overflow-y-auto px-2">
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <h3 class="text-lg font-semibold mb-3">Global Trending</h3>
+            <div class="space-y-2">
+                {% for tag in global_trending_tags|slice:":3" %}
+                <a href="{% url 'news:hashtag' tag.name %}" class="block text-blue-600 hover:text-blue-800">
+                    #{{ tag.name }}
+                    <span class="text-gray-500 text-sm">({{ tag.total_count }})</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="text-lg font-semibold mb-3">India Trending</h3>
+            <div class="space-y-2">
+                {% for tag in india_trending_tags|slice:":3" %}
+                <a href="{% url 'news:hashtag' tag.name %}" class="block text-blue-600 hover:text-blue-800">
+                    #{{ tag.name }}
+                    <span class="text-gray-500 text-sm">({{ tag.total_count }})</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-span-7 px-2">
+        <!-- Trending News -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Trending News</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {% for news in trending_news %}
+                <article class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <!-- Author Info - Moved to top -->
+                    <div class="p-3 border-b">
+                        <div class="flex items-center">
+                            <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
+                                 class="h-8 w-8 rounded-full">
+                            <div class="ml-2">
+                                <p class="text-sm font-medium text-gray-900">{{ news.author.username }}</p>
+                                <p class="text-xs text-gray-500">{{ news.created_at|date:"F j, Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Media -->
+                    {% if news.images.exists %}
+                    <div class="relative" style="padding-top: 177.78%">
+                        <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}"
+                             class="absolute inset-0 w-full h-full object-cover">
+                    </div>
+                    {% elif news.video %}
+                    <div class="relative" style="padding-top: 177.78%">
+                        <video class="absolute inset-0 w-full h-full object-cover">
+                            <source src="{{ news.video.url }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Content -->
+                    <div class="p-4">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                            <a href="{% url 'news:news_detail' news.pk %}" class="hover:text-blue-600">
+                                {{ news.title|truncatechars:60 }}
+                            </a>
+                        </h3>
+                        
+                        <p class="text-gray-600 text-sm mb-3">{{ news.content|truncatechars:120 }}</p>
+                        
+                        <!-- Hashtags -->
+                        {% if news.hashtags.exists %}
+                        <div class="mb-3">
+                            {% for tag in news.hashtags.all %}
+                            <a href="{% url 'news:hashtag' tag.name %}" class="inline-block text-blue-600 hover:text-blue-800 text-sm mr-2">
+                                #{{ tag.name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Interactions -->
+                        <div class="flex items-center text-sm text-gray-500 space-x-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-heart mr-1 {% if request.user in news.likes.all %}text-red-500{% endif %}"></i>
+                                <span>{{ news.likes.count }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-comment mr-1"></i>
+                                <span>{{ news.comments.count }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-share mr-1"></i>
+                                <span>{{ news.shares.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                {% empty %}
+                <p class="text-gray-500">No trending news available.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- World News -->
+            <section>
+                <h2 class="text-2xl font-bold mb-4">World News</h2>
+                <div class="space-y-4" id="world-news-container">
+                    {% for news in world_news %}
+                    <div class="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
+                        {% if news.image %}
+                        <div class="relative" style="padding-top: 56.25%">  <!-- 16:9 aspect ratio -->
+                            <img src="{{ news.image }}" alt="{{ news.title }}" 
+                                 class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        {% endif %}
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold mb-2 hover:text-blue-600 transition-colors duration-200">{{ news.title }}</h3>
+                            <p class="text-gray-600 mb-4">{{ news.text|truncatewords:50 }}</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">{{ news.publish_date }}</span>
+                                <div class="space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800 transition-colors duration-200 read-more-btn">Read More</button>
+                                    <a href="{{ news.url }}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                        <span>Full Article</span>
+                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-4 hidden full-content">
+                                <p class="text-gray-600">{{ news.text }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-gray-500">No world news available at the moment.</p>
+                    {% endfor %}
+                </div>
+                <button id="load-more-world" class="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
+                    Load More World News
+                </button>
+            </section>
+
+            <!-- Indian News -->
+            <section>
+                <h2 class="text-2xl font-bold mb-4">Indian News</h2>
+                <div class="space-y-4" id="indian-news-container">
+                    {% for news in indian_news %}
+                    <div class="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
+                        {% if news.image %}
+                        <div class="relative" style="padding-top: 56.25%">  <!-- 16:9 aspect ratio -->
+                            <img src="{{ news.image }}" alt="{{ news.title }}" 
+                                 class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        {% endif %}
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold mb-2 hover:text-blue-600 transition-colors duration-200">{{ news.title }}</h3>
+                            <p class="text-gray-600 mb-4">{{ news.text|truncatewords:50 }}</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">{{ news.publish_date }}</span>
+                                <div class="space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800 transition-colors duration-200 read-more-btn">Read More</button>
+                                    <a href="{{ news.url }}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                        <span>Full Article</span>
+                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-4 hidden full-content">
+                                <p class="text-gray-600">{{ news.text }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-gray-500">No Indian news available at the moment.</p>
+                    {% endfor %}
+                </div>
+                <button id="load-more-indian" class="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
+                    Load More Indian News
+                </button>
+            </section>
+        </div>
+    </div>
+
+    <!-- Right Sidebar - Market Updates -->
+    <div class="col-span-3 px-2">
+        <div class="bg-white p-4 rounded-lg shadow sticky top-20">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Market Updates</h2>
+                <a href="{% url 'news:market_list' %}" class="text-blue-600 hover:text-blue-800 text-sm">View All</a>
+            </div>
+            
+            <!-- Market Type Selector -->
+            <div class="flex space-x-2 mb-4">
+                <button class="market-tab active px-4 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-600" data-type="stocks">
+                    Stocks
+                </button>
+                <button class="market-tab px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-type="crypto">
+                    Crypto
+                </button>
+            </div>
+
+            <!-- Stocks -->
+            <div id="stocks-container" class="mb-4">
+                <div class="space-y-2">
+                    {% for stock in market_data.stocks|slice:":5" %}
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded-md">
+                        <div class="flex items-center">
+                            <span class="text-gray-900 font-medium">{{ stock.symbol }}</span>
+                            <span class="ml-2 text-sm text-gray-500">{{ stock.name }}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-sm font-medium">${{ stock.price|floatformat:2 }}</span>
+                            <span class="ml-2 {% if stock.change_percent >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {% if stock.change_percent >= 0 %}▲{% else %}▼{% endif %}
+                                {{ stock.change_percent|floatformat:2 }}%
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4 text-gray-500">
+                        <p>No stock data available</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Crypto -->
+            <div id="crypto-container" class="mb-4 hidden">
+                <div class="space-y-2">
+                    {% for crypto in market_data.crypto|slice:":5" %}
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded-md">
+                        <div class="flex items-center">
+                            <span class="text-gray-900 font-medium">{{ crypto.symbol }}</span>
+                            <span class="ml-2 text-sm text-gray-500">{{ crypto.name }}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-sm font-medium">${{ crypto.price|floatformat:2 }}</span>
+                            <span class="ml-2 {% if crypto.change_percent >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {% if crypto.change_percent >= 0 %}▲{% else %}▼{% endif %}
+                                {{ crypto.change_percent|floatformat:2 }}%
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4 text-gray-500">
+                        <p>No crypto data available</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let worldNewsPage = 1;
+let indianNewsPage = 1;
+
+// Add click handlers for Read More buttons
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.read-more-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const content = this.closest('.p-4').querySelector('.full-content');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                this.textContent = 'Show Less';
+            } else {
+                content.classList.add('hidden');
+                this.textContent = 'Read More';
+            }
+        });
+    });
+});
+
+document.getElementById('load-more-world').addEventListener('click', function() {
+    worldNewsPage++;
+    fetch(`/api/world-news/?page=${worldNewsPage}`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('world-news-container');
+            data.news.forEach(news => {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
+                        ${news.image ? `
+                        <div class="relative" style="padding-top: 56.25%">
+                            <img src="${news.image}" alt="${news.title}" 
+                                 class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        ` : ''}
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold mb-2 hover:text-blue-600 transition-colors duration-200">${news.title}</h3>
+                            <p class="text-gray-600 mb-4">${news.text.split(' ').slice(0, 50).join(' ')}...</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">${news.publish_date}</span>
+                                <div class="space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800 transition-colors duration-200 read-more-btn">Read More</button>
+                                    <a href="${news.url}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                        <span>Full Article</span>
+                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-4 hidden full-content">
+                                <p class="text-gray-600">${news.text}</p>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+            if (!data.has_more) {
+                this.style.display = 'none';
+            }
+            // Add click handlers for new Read More buttons
+            document.querySelectorAll('.read-more-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const content = this.closest('.p-4').querySelector('.full-content');
+                    if (content.classList.contains('hidden')) {
+                        content.classList.remove('hidden');
+                        this.textContent = 'Show Less';
+                    } else {
+                        content.classList.add('hidden');
+                        this.textContent = 'Read More';
+                    }
+                });
+            });
+        });
+});
+
+document.getElementById('load-more-indian').addEventListener('click', function() {
+    indianNewsPage++;
+    fetch(`/api/indian-news/?page=${indianNewsPage}`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('indian-news-container');
+            data.news.forEach(news => {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
+                        ${news.image ? `
+                        <div class="relative" style="padding-top: 56.25%">
+                            <img src="${news.image}" alt="${news.title}" 
+                                 class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        ` : ''}
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold mb-2 hover:text-blue-600 transition-colors duration-200">${news.title}</h3>
+                            <p class="text-gray-600 mb-4">${news.text.split(' ').slice(0, 50).join(' ')}...</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">${news.publish_date}</span>
+                                <div class="space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800 transition-colors duration-200 read-more-btn">Read More</button>
+                                    <a href="${news.url}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                        <span>Full Article</span>
+                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-4 hidden full-content">
+                                <p class="text-gray-600">${news.text}</p>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+            if (!data.has_more) {
+                this.style.display = 'none';
+            }
+            // Add click handlers for new Read More buttons
+            document.querySelectorAll('.read-more-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const content = this.closest('.p-4').querySelector('.full-content');
+                    if (content.classList.contains('hidden')) {
+                        content.classList.remove('hidden');
+                        this.textContent = 'Show Less';
+                    } else {
+                        content.classList.add('hidden');
+                        this.textContent = 'Read More';
+                    }
+                });
+            });
+        });
+});
+
+// Market tab switching
+document.querySelectorAll('.market-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        // Remove active class from all tabs
+        document.querySelectorAll('.market-tab').forEach(t => {
+            t.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+            t.classList.add('text-gray-500');
+        });
+        
+        // Add active class to clicked tab
+        this.classList.add('active', 'bg-blue-50', 'text-blue-600');
+        this.classList.remove('text-gray-500');
+        
+        // Hide all containers
+        document.getElementById('stocks-container').classList.add('hidden');
+        document.getElementById('crypto-container').classList.add('hidden');
+        
+        // Show selected container
+        document.getElementById(`${this.dataset.type}-container`).classList.remove('hidden');
+    });
+});
+</script>
+{% endblock %} 

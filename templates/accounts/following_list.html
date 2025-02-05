@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }}'s Following - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+            <h1 class="text-lg font-medium leading-6 text-gray-900">
+                Following
+                <span class="text-sm text-gray-500">({{ following.count }})</span>
+            </h1>
+            <p class="mt-1 text-sm text-gray-500">
+                People that {{ profile_user.username }} follows
+            </p>
+        </div>
+        
+        <div class="divide-y divide-gray-200">
+            {% for followed in following %}
+            <div class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center min-w-0">
+                        <img class="h-12 w-12 rounded-full"
+                             src="{{ followed.user.profile.avatar.url }}"
+                             alt="{{ followed.user.username }}">
+                        <div class="ml-4 truncate">
+                            <a href="{% url 'accounts:user_profile' followed.user.username %}"
+                               class="text-sm font-medium text-gray-900 hover:text-blue-600">
+                                {{ followed.user.username }}
+                            </a>
+                            {% if followed.user.profile.bio %}
+                            <p class="mt-1 text-sm text-gray-500 truncate">
+                                {{ followed.user.profile.bio }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if user.is_authenticated and user != followed.user %}
+                    <button data-username="{{ followed.user.username }}"
+                            class="follow-button ml-4 inline-flex items-center px-3 py-1.5 border {% if user.profile.following.filter(user=followed.user).exists %}border-gray-300 bg-white text-gray-700{% else %}border-transparent bg-blue-600 text-white{% endif %} text-xs font-medium rounded-full hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        {% if user.profile.following.filter(user=followed.user).exists %}
+                        Following
+                        {% else %}
+                        Follow
+                        {% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="px-4 py-12 text-center sm:px-6">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p class="mt-4 text-sm text-gray-500">
+                    {{ profile_user.username }} isn't following anyone yet.
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Follow/Unfollow functionality
+    document.querySelectorAll('.follow-button').forEach(button => {
+        button.addEventListener('click', async function() {
+            const username = this.dataset.username;
+            try {
+                const response = await fetch(`/accounts/follow/${username}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Update button text and style
+                    if (data.action === 'followed') {
+                        this.textContent = 'Following';
+                        this.classList.remove('bg-blue-600', 'text-white');
+                        this.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+                    } else {
+                        this.textContent = 'Follow';
+                        this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+                        this.classList.add('bg-blue-600', 'text-white');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
+</script>
+{% endblock %} 

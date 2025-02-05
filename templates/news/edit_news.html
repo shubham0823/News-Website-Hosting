@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Edit News - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-900">Edit News Article</h1>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="p-6 space-y-6" id="newsForm">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="rounded-md bg-red-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Hidden format field -->
+            {{ form.news_type }}
+            
+            <!-- Title -->
+            <div>
+                <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Title
+                </label>
+                <div class="mt-1">
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div>
+                <label for="{{ form.content.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Content
+                </label>
+                <div class="mt-1">
+                    {{ form.content }}
+                    {% if form.content.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.content.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Media Type Selection (for short format) -->
+            <div id="mediaTypeSection" {% if news.news_type != 'short' %}class="hidden"{% endif %}>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Media Type
+                </label>
+                <div class="grid grid-cols-3 gap-4">
+                    {% for value, label in form.media_type.field.choices %}
+                    <div class="media-type-option border-2 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="media_type" value="{{ value }}" class="sr-only">
+                            <span class="text-sm font-medium">{{ label }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.media_type.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.media_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Images -->
+            <div id="imageSection" class="hidden">
+                <label for="{{ form.images.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    {% if news.news_type == 'short' %}Image{% else %}Images{% endif %}
+                </label>
+                <div class="mt-1">
+                    <div class="flex items-center">
+                        <label class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Choose {% if news.news_type == 'short' %}Image{% else %}Images{% endif %}
+                            {{ form.images }}
+                        </label>
+                        <span class="ml-3 text-sm text-gray-500" id="selectedFiles">No file selected</span>
+                    </div>
+                    {% if form.images.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.images.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% if news.images.exists %}
+                <div class="mt-4">
+                    <h4 class="text-sm font-medium text-gray-700">Current Images:</h4>
+                    <div class="mt-2 grid grid-cols-2 gap-4">
+                        {% for image in news.images.all %}
+                        <div class="relative" style="padding-top: 177.78%">  <!-- 16:9 aspect ratio (9/16 * 100) -->
+                            <img src="{{ image.image.url }}" alt="Current image" 
+                                 class="absolute inset-0 w-full h-full object-cover rounded-lg">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Video Upload -->
+            <div id="videoSection" class="hidden">
+                <label for="video" class="block text-sm font-medium text-gray-700">
+                    Video {% if news.news_type == 'short' %}(Max 1 minute){% endif %}
+                </label>
+                <div class="mt-1">
+                    <input type="file" name="video" id="video" accept="video/*"
+                           class="sr-only">
+                    <label for="video"
+                           class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Choose Video
+                    </label>
+                    <span class="ml-3 text-sm text-gray-500" id="selectedVideo">No video selected</span>
+                </div>
+                {% if form.video.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.video.errors.0 }}</p>
+                {% endif %}
+                {% if news.video %}
+                <div class="mt-4">
+                    <h4 class="text-sm font-medium text-gray-700">Current Video:</h4>
+                    <div class="mt-2">
+                        <div class="relative" style="padding-top: 177.78%">  <!-- 16:9 aspect ratio (9/16 * 100) -->
+                            <video controls class="absolute inset-0 w-full h-full object-cover rounded-lg">
+                                <source src="{{ news.video.url }}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="pt-5">
+                <div class="flex justify-end">
+                    <a href="{% url 'news:news_detail' news.pk %}"
+                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const newsType = '{{ news.news_type }}';
+        const mediaTypeSection = document.getElementById('mediaTypeSection');
+        const videoSection = document.getElementById('videoSection');
+        const imageSection = document.getElementById('imageSection');
+        const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
+        const videoInput = document.getElementById('video');
+        const mediaTypeOptions = document.querySelectorAll('.media-type-option');
+        
+        // Show appropriate sections based on news type
+        if (newsType === 'short') {
+            mediaTypeSection.classList.remove('hidden');
+            // Select the current media type
+            const currentMediaType = '{{ form.initial.media_type }}';
+            const radioInput = document.querySelector(`input[name="media_type"][value="${currentMediaType}"]`);
+            if (radioInput) {
+                radioInput.checked = true;
+                radioInput.closest('.media-type-option').classList.add('border-blue-500');
+                if (currentMediaType === 'image') {
+                    imageSection.classList.remove('hidden');
+                } else if (currentMediaType === 'video') {
+                    videoSection.classList.remove('hidden');
+                }
+            }
+        } else {
+            imageSection.classList.remove('hidden');
+            videoSection.classList.remove('hidden');
+        }
+
+        // Media type selection
+        mediaTypeOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+                
+                // Update UI
+                mediaTypeOptions.forEach(opt => opt.classList.remove('border-blue-500'));
+                this.classList.add('border-blue-500');
+                
+                // Show/hide appropriate section
+                if (radio.value === 'image') {
+                    imageSection.classList.remove('hidden');
+                    videoSection.classList.add('hidden');
+                    // Clear video input
+                    videoInput.value = '';
+                    document.getElementById('selectedVideo').textContent = 'No video selected';
+                } else if (radio.value === 'video') {
+                    videoSection.classList.remove('hidden');
+                    imageSection.classList.add('hidden');
+                    // Clear image input
+                    imageInput.value = '';
+                    document.getElementById('selectedFiles').textContent = 'No file selected';
+                } else {
+                    // No media
+                    imageSection.classList.add('hidden');
+                    videoSection.classList.add('hidden');
+                    // Clear both inputs
+                    imageInput.value = '';
+                    videoInput.value = '';
+                    document.getElementById('selectedFiles').textContent = 'No file selected';
+                    document.getElementById('selectedVideo').textContent = 'No video selected';
+                }
+            });
+        });
+
+        // File input handling
+        imageInput.addEventListener('change', function() {
+            const fileCount = this.files.length;
+            document.getElementById('selectedFiles').textContent = 
+                fileCount === 0 ? 'No file selected' : 
+                fileCount === 1 ? '1 file selected' : 
+                `${fileCount} files selected`;
+        });
+
+        videoInput.addEventListener('change', function() {
+            const fileName = this.files[0]?.name || 'No video selected';
+            document.getElementById('selectedVideo').textContent = fileName;
+        });
+    });
+</script>
+{% endblock %} 

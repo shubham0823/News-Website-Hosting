@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NewsHub{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Dark mode configuration
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#1a1a1a',
+                            text: '#ffffff',
+                            secondary: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check for saved theme preference or use system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+
+        // Function to toggle theme
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark')
+                localStorage.theme = 'light'
+            } else {
+                document.documentElement.classList.add('dark')
+                localStorage.theme = 'dark'
+            }
+        }
+    </script>
+    <style>
+        /* Dark mode styles */
+        .dark body {
+            background-color: theme('colors.dark.bg');
+            color: theme('colors.dark.text');
+        }
+        .dark .bg-white {
+            background-color: theme('colors.dark.bg');
+        }
+        .dark .text-gray-800 {
+            color: theme('colors.dark.text');
+        }
+        .dark .border-gray-200 {
+            border-color: theme('colors.dark.secondary');
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-100 dark:bg-dark-bg">
+    <!-- Navigation -->
+    <nav class="bg-white dark:bg-dark-bg border-b border-gray-200 dark:border-dark-secondary fixed w-full z-30 top-0 transition-all duration-300 shadow-sm hover:shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Left section with logo and navigation -->
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <a href="{% url 'news:landing_page' %}" class="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors duration-200">NewsHub</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="{% url 'news:landing_page' %}"
+                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
+                            Home
+                        </a>
+                        <a href="{% url 'news:explore' %}"
+                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
+                            Explore
+                        </a>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'news:create_news' %}"
+                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
+                            Create News
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Centered search form -->
+                <div class="flex-1 flex items-center justify-center max-w-xl px-2">
+                    <form class="w-full" action="{% url 'news:search_news' %}" method="GET">
+                        <div class="flex">
+                            <select name="type" class="rounded-l-md border border-gray-300 dark:border-dark-secondary dark:bg-dark-bg dark:text-dark-text px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                <option value="news">News</option>
+                                <option value="users">Users</option>
+                            </select>
+                            <input type="text" name="q" placeholder="Search..." class="flex-1 border-y border-gray-300 dark:border-dark-secondary dark:bg-dark-bg dark:text-dark-text px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                            <button type="submit" class="rounded-r-md bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
+                                Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right section with user menu -->
+                <div class="flex items-center">
+                    <!-- Theme toggle -->
+                    <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-secondary mr-4 transform hover:scale-110 transition-all duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 dark:text-dark-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    {% if user.is_authenticated %}
+                    <!-- Notifications -->
+                    <div class="ml-3 relative">
+                        <a href="{% url 'news:notifications' %}"
+                           class="bg-white p-1 rounded-full text-gray-400 hover:text-blue-600 transform hover:scale-110 transition-all duration-200">
+                            <span class="sr-only">View notifications</span>
+                            <i class="fas fa-bell"></i>
+                        </a>
+                    </div>
+
+                    <!-- Profile dropdown -->
+                    <div class="ml-3 relative">
+                        <a href="{% url 'news:user_profile' user.username %}"
+                           class="flex items-center space-x-2 text-gray-500 hover:text-blue-600 transform hover:scale-105 transition-all duration-200">
+                            <img class="h-8 w-8 rounded-full object-cover ring-2 ring-transparent hover:ring-blue-500 transition-all duration-200"
+                                 src="{{ user.profile.avatar.url }}"
+                                 alt="{{ user.username }}">
+                            <span class="text-sm font-medium">{{ user.username }}</span>
+                        </a>
+                    </div>
+
+                    <!-- Logout -->
+                    <div class="ml-3 relative">
+                        <a href="{% url 'accounts:logout' %}"
+                           class="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors duration-200">
+                            Logout
+                        </a>
+                    </div>
+                    {% else %}
+                    <a href="{% url 'accounts:login' %}"
+                       class="text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors duration-200">Login</a>
+                    <a href="{% url 'accounts:register' %}"
+                       class="ml-4 text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transform hover:scale-105 transition-all duration-200">Sign up</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content with padding for fixed navbar -->
+    <div class="pt-16">
+        <main class="max-w-full mx-0">
+            {% if messages %}
+            <div class="mb-8 px-4">
+                {% for message in messages %}
+                <div class="rounded-md p-4 {% if message.tags == 'success' %}bg-green-50{% elif message.tags == 'error' %}bg-red-50{% else %}bg-blue-50{% endif %} mb-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            {% if message.tags == 'success' %}
+                            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor">
+                                <path fill-rule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            {% elif message.tags == 'error' %}
+                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor">
+                                <path fill-rule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            {% else %}
+                            <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor">
+                                <path fill-rule="evenodd"
+                                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium {% if message.tags == 'success' %}text-green-800{% elif message.tags == 'error' %}text-red-800{% else %}text-blue-800{% endif %}">
+                                {{ message }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+    <script>
+        // Profile dropdown toggle
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userMenu = document.getElementById('user-menu');
+        
+        if (userMenuButton && userMenu) {
+            userMenuButton.addEventListener('click', function() {
+                const expanded = this.getAttribute('aria-expanded') === 'true';
+                this.setAttribute('aria-expanded', !expanded);
+                userMenu.classList.toggle('hidden');
+            });
+
+            // Close the dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                    userMenuButton.setAttribute('aria-expanded', 'false');
+                    userMenu.classList.add('hidden');
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

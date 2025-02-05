@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }}'s Followers - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">{{ user.username }}'s Followers</h1>
+                <a href="{% url 'news:user_profile' user.username %}" class="text-blue-600 hover:text-blue-800">
+                    Back to Profile
+                </a>
+            </div>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            {% for profile in followers %}
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img src="{{ profile.avatar.url }}" alt="{{ profile.user.username }}"
+                             class="h-12 w-12 rounded-full">
+                        <div>
+                            <a href="{% url 'news:user_profile' profile.user.username %}"
+                               class="text-lg font-medium text-gray-900 hover:text-blue-600">
+                                {{ profile.user.username }}
+                            </a>
+                            {% if profile.bio %}
+                            <p class="text-sm text-gray-500">{{ profile.bio|truncatechars:100 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if user.is_authenticated and user != profile.user %}
+                    <button class="follow-button px-4 py-2 rounded-lg font-medium {% if profile in user.profile.following.all %}bg-gray-200 hover:bg-gray-300 text-gray-800{% else %}bg-blue-600 hover:bg-blue-700 text-white{% endif %}"
+                            data-username="{{ profile.user.username }}">
+                        {% if profile in user.profile.following.all %}Following{% else %}Follow{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-6 text-center">
+                <p class="text-gray-500">No followers yet.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.follow-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const username = this.dataset.username;
+            fetch(`/user/${username}/follow/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update button text and style
+                    if (data.is_following) {
+                        this.textContent = 'Following';
+                        this.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                        this.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                    } else {
+                        this.textContent = 'Follow';
+                        this.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                        this.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 

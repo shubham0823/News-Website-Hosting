@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        </div>
+
+        <div class="p-6 space-y-8">
+            <!-- Profile Photo Section -->
+            <div>
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Profile Photo</h2>
+                <div class="flex items-center space-x-6">
+                    <div class="relative">
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
+                             class="h-24 w-24 rounded-full object-cover">
+                        <div class="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <label for="avatar-upload" class="cursor-pointer text-white text-sm">
+                                Change Photo
+                            </label>
+                        </div>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="avatar-form" class="hidden">
+                        {% csrf_token %}
+                        <input type="file" id="avatar-upload" name="avatar" accept="image/*"
+                               class="hidden" onchange="document.getElementById('avatar-form').submit()">
+                    </form>
+                </div>
+            </div>
+
+            <!-- Theme Settings -->
+            <div>
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Theme Settings</h2>
+                <div class="flex items-center justify-between py-4 border-b">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-900">Dark Mode</h3>
+                        <p class="text-sm text-gray-500">Enable dark theme for better viewing in low light</p>
+                    </div>
+                    <button type="button" id="theme-toggle"
+                            class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            role="switch" aria-checked="false">
+                        <span class="sr-only">Use dark theme</span>
+                        <span aria-hidden="true"
+                              class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    
+    // Initialize theme from localStorage
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        html.classList.add('dark');
+        themeToggle.setAttribute('aria-checked', 'true');
+        themeToggle.classList.add('bg-blue-600');
+        themeToggle.querySelector('span:last-child').classList.add('translate-x-5');
+    } else {
+        themeToggle.classList.add('bg-gray-200');
+    }
+    
+    // Theme toggle handler
+    themeToggle.addEventListener('click', function() {
+        const isChecked = this.getAttribute('aria-checked') === 'true';
+        const newState = !isChecked;
+        
+        this.setAttribute('aria-checked', newState);
+        
+        if (newState) {
+            this.classList.remove('bg-gray-200');
+            this.classList.add('bg-blue-600');
+            this.querySelector('span:last-child').classList.add('translate-x-5');
+            html.classList.add('dark');
+        } else {
+            this.classList.remove('bg-blue-600');
+            this.classList.add('bg-gray-200');
+            this.querySelector('span:last-child').classList.remove('translate-x-5');
+            html.classList.remove('dark');
+        }
+        
+        localStorage.setItem('darkMode', newState);
+    });
+});
+</script>
+{% endblock %} 

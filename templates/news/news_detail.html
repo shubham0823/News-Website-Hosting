@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ news.title }} - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- News Article -->
+    <article class="bg-white rounded-lg shadow-md overflow-hidden">
+        <!-- Author Info -->
+        <div class="p-6 border-b">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
+                         class="h-12 w-12 rounded-full">
+                    <div class="ml-4">
+                        <h2 class="text-lg font-medium text-gray-900">{{ news.author.username }}</h2>
+                        <p class="text-sm text-gray-500">{{ news.created_at|date:"F j, Y" }}</p>
+                    </div>
+                </div>
+                {% if user == news.author %}
+                <div class="flex space-x-2">
+                    <a href="{% url 'news:edit_news' news.pk %}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                    </a>
+                    <a href="{% url 'news:delete_news' news.pk %}"
+                       class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- News Content -->
+        <div class="p-6">
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ news.title }}</h1>
+            
+            <!-- Images -->
+            {% if news.images.exists %}
+            <div class="mb-6 grid grid-cols-1 gap-4">
+                {% for image in news.images.all %}
+                <div class="relative" style="padding-top: 177.78%">  <!-- 16:9 aspect ratio (9/16 * 100) -->
+                    <img src="{{ image.image.url }}" alt="News image" 
+                         class="absolute inset-0 w-full h-full object-cover rounded-lg">
+                </div>
+                {% empty %}
+                <p class="text-gray-500">No images available for this news article.</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- Video -->
+            {% if news.video %}
+            <div class="mb-6">
+                <div class="relative" style="padding-top: 177.78%">  <!-- 16:9 aspect ratio (9/16 * 100) -->
+                    <video controls class="absolute inset-0 w-full h-full object-cover rounded-lg">
+                        <source src="{{ news.video.url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Content -->
+            <div class="prose max-w-none">
+                {{ news.content|linebreaks }}
+            </div>
+            
+            <!-- Social Interactions -->
+            <div class="mt-6 flex items-center space-x-6">
+                <button id="likeButton" class="flex items-center space-x-2 text-gray-500 hover:text-blue-600"
+                        data-news-id="{{ news.pk }}" data-liked="{% if request.user in news.likes.all %}true{% else %}false{% endif %}">
+                    <i class="fas fa-heart {% if request.user in news.likes.all %}text-red-500{% endif %}"></i>
+                    <span id="likesCount">{{ news.likes.count }}</span>
+                </button>
+                <button class="flex items-center space-x-2 text-gray-500 hover:text-blue-600" id="commentButton">
+                    <i class="fas fa-comment"></i>
+                    <span>{{ news.comments.count }}</span>
+                </button>
+                <button id="shareButton" class="flex items-center space-x-2 text-gray-500 hover:text-blue-600"
+                        data-news-id="{{ news.pk }}">
+                    <i class="fas fa-share"></i>
+                    <span id="sharesCount">{{ news.shares.count }}</span>
+                </button>
+            </div>
+        </div>
+    </article>
+
+    <!-- Comments Section -->
+    {% include "news/includes/comments.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include "news/includes/news_detail_js.html" %}
+{% endblock %} 

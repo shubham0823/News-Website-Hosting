@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }}'s Profile - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Profile Header with Cover Image -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="relative h-48 bg-gradient-to-r from-blue-500 to-blue-600">
+            <div class="absolute bottom-0 left-0 right-0 px-6 py-4 transform translate-y-1/2">
+                <div class="flex items-end">
+                    <img src="{{ profile_user.profile.avatar.url }}" alt="{{ profile_user.username }}" 
+                         class="h-32 w-32 rounded-full border-4 border-white object-cover">
+                    <div class="ml-6 pb-4">
+                        <h1 class="text-3xl font-bold text-white">{{ profile_user.username }}</h1>
+                        <p class="text-blue-100">Joined {{ profile_user.date_joined|date:"F Y" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Stats -->
+        <div class="mt-20 px-6 py-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <div class="flex space-x-8">
+                    <a href="{% url 'news:followers_list' profile_user.username %}" class="text-center hover:text-blue-600 transition-colors duration-200">
+                        <div class="text-2xl font-bold" id="followerCount">{{ followers_count }}</div>
+                        <div class="text-gray-600">Followers</div>
+                    </a>
+                    <a href="{% url 'news:following_list' profile_user.username %}" class="text-center hover:text-blue-600 transition-colors duration-200">
+                        <div class="text-2xl font-bold">{{ following_count }}</div>
+                        <div class="text-gray-600">Following</div>
+                    </a>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">{{ news_count }}</div>
+                        <div class="text-gray-600">Posts</div>
+                    </div>
+                </div>
+                {% if user.is_authenticated and user != profile_user %}
+                <button id="followButton" 
+                        data-username="{{ profile_user.username }}"
+                        class="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-full shadow-sm text-white {% if is_following %}bg-gray-600 hover:bg-gray-700{% else %}bg-blue-600 hover:bg-blue-700{% endif %} transition-all duration-200 transform hover:scale-105">
+                    {% if is_following %}
+                        Following
+                    {% else %}
+                        Follow
+                    {% endif %}
+                </button>
+                {% endif %}
+            </div>
+            {% if profile_user.profile.bio %}
+            <p class="mt-4 text-gray-600">{{ profile_user.profile.bio }}</p>
+            {% endif %}
+        </div>
+
+        <!-- User's Posts -->
+        <div class="px-6 py-6">
+            <h2 class="text-2xl font-bold mb-6">Posts</h2>
+            <div class="grid grid-cols-1 gap-6">
+                {% for news in news_items %}
+                <article class="bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-all duration-200">
+                    {% if news.images.first %}
+                    <div class="relative h-48">
+                        <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}" 
+                             class="absolute inset-0 w-full h-full object-cover">
+                    </div>
+                    {% endif %}
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold mb-2 hover:text-blue-600 transition-colors duration-200">
+                            <a href="{% url 'news:news_detail' news.pk %}">{{ news.title }}</a>
+                        </h3>
+                        <p class="text-gray-600 mb-4">{{ news.content|truncatewords:50 }}</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex space-x-4 text-gray-500">
+                                <span class="flex items-center">
+                                    <i class="far fa-heart mr-1"></i>
+                                    {{ news.likes.count }}
+                                </span>
+                                <span class="flex items-center">
+                                    <i class="far fa-comment mr-1"></i>
+                                    {{ news.comments.count }}
+                                </span>
+                                <span class="flex items-center">
+                                    <i class="far fa-share-square mr-1"></i>
+                                    {{ news.shares.count }}
+                                </span>
+                            </div>
+                            <span class="text-gray-500 text-sm">{{ news.created_at|date:"F j, Y" }}</span>
+                        </div>
+                    </div>
+                </article>
+                {% empty %}
+                <div class="text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No posts yet</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ profile_user.username }} hasn't posted any news yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if news_items.has_other_pages %}
+            <div class="mt-8 flex justify-center">
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    {% if news_items.has_previous %}
+                    <a href="?page={{ news_items.previous_page_number }}" 
+                       class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
+                        Previous
+                    </a>
+                    {% endif %}
+
+                    {% for num in news_items.paginator.page_range %}
+                    {% if news_items.number == num %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                        {{ num }}
+                    </span>
+                    {% else %}
+                    <a href="?page={{ num }}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
+                        {{ num }}
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if news_items.has_next %}
+                    <a href="?page={{ news_items.next_page_number }}" 
+                       class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
+                        Next
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const followButton = document.getElementById('followButton');
+    if (followButton) {
+        followButton.addEventListener('click', function() {
+            const username = this.dataset.username;
+            fetch(`/news/user/${username}/follow/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update button text and style
+                    this.textContent = data.is_following ? 'Following' : 'Follow';
+                    if (data.is_following) {
+                        this.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                        this.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                    } else {
+                        this.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                        this.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    }
+                    
+                    // Update follower count
+                    const followerCount = document.getElementById('followerCount');
+                    if (followerCount) {
+                        followerCount.textContent = data.follower_count;
+                    }
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

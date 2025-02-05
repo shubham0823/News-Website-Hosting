@@ -1,0 +1,156 @@
+<script>
+    // Like functionality
+    const likeButton = document.getElementById('likeButton');
+    if (likeButton) {
+        likeButton.addEventListener('click', function() {
+            const newsId = this.dataset.newsId;
+            fetch(`/news/${newsId}/like/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('likesCount').textContent = data.likes_count;
+                const icon = likeButton.querySelector('i');
+                if (data.liked) {
+                    icon.classList.add('text-red-500');
+                } else {
+                    icon.classList.remove('text-red-500');
+                }
+            });
+        });
+    }
+
+    // Share functionality
+    const shareButton = document.getElementById('shareButton');
+    if (shareButton) {
+        shareButton.addEventListener('click', function() {
+            const newsId = this.dataset.newsId;
+            fetch(`/news/${newsId}/share/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('sharesCount').textContent = data.shares_count;
+            });
+        });
+    }
+
+    // Comment functionality
+    const commentForm = document.getElementById('commentForm');
+    if (commentForm) {
+        commentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const content = document.getElementById('commentContent').value;
+            fetch(`/news/{{ news.pk }}/comment/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `content=${encodeURIComponent(content)}`,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Add new comment to the list
+                    const commentsList = document.getElementById('commentsList');
+                    const newComment = document.createElement('div');
+                    newComment.className = 'bg-white rounded-lg shadow-sm p-6 mb-4';
+                    newComment.innerHTML = `
+                        <div class="flex items-start space-x-4">
+                            <img src="{{ request.user.profile.avatar.url }}" alt="{{ request.user.username }}"
+                                 class="h-10 w-10 rounded-full">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-sm font-medium text-gray-900">{{ request.user.username }}</h3>
+                                    <p class="text-sm text-gray-500">Just now</p>
+                                </div>
+                                <div class="mt-1 text-sm text-gray-700">
+                                    ${content}
+                                </div>
+                                <div class="mt-2">
+                                    <button class="text-sm text-gray-500 hover:text-blue-600 reply-button"
+                                            data-comment-id="${data.comment_id}">
+                                        Reply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    commentsList.insertBefore(newComment, commentsList.firstChild);
+                    commentForm.reset();
+                }
+            });
+        });
+    }
+
+    // Reply functionality
+    document.querySelectorAll('.reply-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            const replyForm = document.querySelector(`.reply-form[data-parent-id="${commentId}"]`);
+            replyForm.classList.remove('hidden');
+        });
+    });
+
+    document.querySelectorAll('.cancel-reply').forEach(button => {
+        button.addEventListener('click', function() {
+            const form = this.closest('.reply-form');
+            form.classList.add('hidden');
+            form.reset();
+        });
+    });
+
+    document.querySelectorAll('.reply-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const parentId = this.dataset.parentId;
+            const content = this.querySelector('textarea').value;
+            fetch(`/news/{{ news.pk }}/comment/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `content=${encodeURIComponent(content)}&parent_id=${parentId}`,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Add new reply to the list
+                    const parentComment = form.closest('.flex-1');
+                    let repliesContainer = parentComment.querySelector('.space-y-4');
+                    if (!repliesContainer) {
+                        repliesContainer = document.createElement('div');
+                        repliesContainer.className = 'mt-4 space-y-4 pl-4 border-l-2 border-gray-100';
+                        parentComment.appendChild(repliesContainer);
+                    }
+                    const newReply = document.createElement('div');
+                    newReply.className = 'flex items-start space-x-4';
+                    newReply.innerHTML = `
+                        <img src="{{ request.user.profile.avatar.url }}" alt="{{ request.user.username }}"
+                             class="h-8 w-8 rounded-full">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-sm font-medium text-gray-900">{{ request.user.username }}</h4>
+                                <p class="text-sm text-gray-500">Just now</p>
+                            </div>
+                            <div class="mt-1 text-sm text-gray-700">
+                                ${content}
+                            </div>
+                        </div>
+                    `;
+                    repliesContainer.appendChild(newReply);
+                    form.classList.add('hidden');
+                    form.reset();
+                }
+            });
+        });
+    });
+</script> 

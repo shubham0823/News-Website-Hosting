@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-900">Edit Profile</h1>
+        </div>
+        
+        <form method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="rounded-md bg-red-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Avatar -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Profile Picture</label>
+                <div class="mt-2 flex items-center space-x-4">
+                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
+                         class="h-16 w-16 rounded-full">
+                    <div>
+                        <label for="{{ form.avatar.id_for_label }}"
+                               class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Change
+                        </label>
+                        {{ form.avatar }}
+                        {% if form.avatar.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.avatar.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Email -->
+            <div>
+                <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Email Address
+                </label>
+                <div class="mt-1">
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Bio -->
+            <div>
+                <label for="{{ form.bio.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Bio
+                </label>
+                <div class="mt-1">
+                    {{ form.bio }}
+                    {% if form.bio.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.bio.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Change Password -->
+            <div class="pt-6 border-t border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Change Password</h3>
+                <p class="mt-1 text-sm text-gray-500">Leave these fields empty if you don't want to change your password.</p>
+                
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <label for="{{ form.current_password.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Current Password
+                        </label>
+                        <div class="mt-1">
+                            {{ form.current_password }}
+                            {% if form.current_password.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.current_password.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="{{ form.new_password.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            New Password
+                        </label>
+                        <div class="mt-1">
+                            {{ form.new_password }}
+                            {% if form.new_password.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.new_password.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="{{ form.confirm_new_password.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Confirm New Password
+                        </label>
+                        <div class="mt-1">
+                            {{ form.confirm_new_password }}
+                            {% if form.confirm_new_password.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.confirm_new_password.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="pt-6 border-t border-gray-200">
+                <div class="flex justify-end">
+                    <a href="{% url 'news:user_profile' user.username %}"
+                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Preview avatar image before upload
+    const avatarInput = document.getElementById('{{ form.avatar.id_for_label }}');
+    const avatarPreview = document.querySelector('img');
+    
+    avatarInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                avatarPreview.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Market Updates - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Market Updates</h1>
+        <p class="mt-2 text-gray-600">Track stocks and cryptocurrencies</p>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="mb-8">
+        <div class="flex space-x-4">
+            <div class="flex-1">
+                <input type="text" id="market-search" placeholder="Search stocks or crypto..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex space-x-2">
+                <button class="market-filter-btn active px-4 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-600" data-type="all">
+                    All
+                </button>
+                <button class="market-filter-btn px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-type="stocks">
+                    Stocks
+                </button>
+                <button class="market-filter-btn px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-type="crypto">
+                    Crypto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">24h Change</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Market Cap</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="market-list">
+                    <!-- Market items will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('market-search');
+    const marketList = document.getElementById('market-list');
+    let currentFilter = 'all';
+    let marketData = [];
+
+    // Load initial data
+    fetchMarketData();
+
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        filterMarketData();
+    });
+
+    // Filter buttons
+    document.querySelectorAll('.market-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.market-filter-btn').forEach(b => {
+                b.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+                b.classList.add('text-gray-500');
+            });
+            this.classList.add('active', 'bg-blue-50', 'text-blue-600');
+            this.classList.remove('text-gray-500');
+            currentFilter = this.dataset.type;
+            filterMarketData();
+        });
+    });
+
+    function fetchMarketData() {
+        fetch('/api/market-data/')
+            .then(response => response.json())
+            .then(data => {
+                marketData = [...data.stocks.map(s => ({...s, type: 'stock'})), 
+                            ...data.crypto.map(c => ({...c, type: 'crypto'}))];
+                filterMarketData();
+            });
+    }
+
+    function filterMarketData() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filteredData = marketData.filter(item => {
+            const matchesSearch = item.symbol.toLowerCase().includes(searchTerm) || 
+                                item.name.toLowerCase().includes(searchTerm);
+            const matchesFilter = currentFilter === 'all' || item.type === currentFilter;
+            return matchesSearch && matchesFilter;
+        });
+
+        renderMarketList(filteredData);
+    }
+
+    function renderMarketList(data) {
+        marketList.innerHTML = data.map(item => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${item.symbol}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-500">${item.name}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">$${item.price.toFixed(2)}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm ${item.change_percent >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${item.change_percent >= 0 ? '▲' : '▼'} ${item.change_percent.toFixed(2)}%
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-500">$${(item.market_cap || 0).toLocaleString()}</div>
+                </td>
+            </tr>
+        `).join('');
+    }
+});
+</script>
+{% endblock %} 

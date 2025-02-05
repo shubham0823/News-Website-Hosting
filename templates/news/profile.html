@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }}'s Profile - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Profile Header -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="relative h-48 bg-blue-600">
+            <!-- Cover Photo -->
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+        </div>
+        <div class="relative px-6 pb-6">
+            <!-- Avatar -->
+            <div class="absolute -top-16 left-6">
+                <img src="{{ user_profile.avatar.url }}" alt="{{ profile_user.username }}"
+                     class="h-32 w-32 rounded-full border-4 border-white shadow-lg">
+            </div>
+            
+            <!-- Profile Info -->
+            <div class="mt-20">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">{{ profile_user.username }}</h1>
+                        {% if user_profile.bio %}
+                        <p class="mt-2 text-gray-600">{{ user_profile.bio }}</p>
+                        {% endif %}
+                    </div>
+                    {% if user.is_authenticated and user != profile_user %}
+                    <button id="followButton" data-username="{{ profile_user.username }}"
+                            class="px-4 py-2 rounded-lg font-medium {% if is_following %}bg-gray-200 hover:bg-gray-300 text-gray-800{% else %}bg-blue-600 hover:bg-blue-700 text-white{% endif %}">
+                        {% if is_following %}Following{% else %}Follow{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+                
+                <!-- Stats -->
+                <div class="mt-6 flex space-x-8">
+                    <a href="{% url 'news:followers_list' profile_user.username %}" class="text-gray-600 hover:text-gray-900">
+                        <span class="font-bold text-gray-900" id="followersCount">{{ followers_count }}</span>
+                        <span>Followers</span>
+                    </a>
+                    <a href="{% url 'news:following_list' profile_user.username %}" class="text-gray-600 hover:text-gray-900">
+                        <span class="font-bold text-gray-900">{{ following_count }}</span>
+                        <span>Following</span>
+                    </a>
+                    <div class="text-gray-600">
+                        <span class="font-bold text-gray-900">{{ news_items.paginator.count }}</span>
+                        <span>News Articles</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- News Articles -->
+    <div class="mt-8 space-y-6">
+        <h2 class="text-xl font-bold text-gray-900">News Articles</h2>
+        {% for news in news_items %}
+        <article class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
+                         class="h-10 w-10 rounded-full">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900">{{ news.author.username }}</p>
+                        <p class="text-sm text-gray-500">{{ news.created_at|timesince }} ago</p>
+                    </div>
+                </div>
+                <h3 class="mt-4 text-lg font-medium text-gray-900">
+                    <a href="{% url 'news:news_detail' news.pk %}" class="hover:text-blue-600">
+                        {{ news.title }}
+                    </a>
+                </h3>
+                <p class="mt-2 text-gray-600">{{ news.content|truncatewords:50 }}</p>
+                
+                <!-- Images -->
+                {% if news.images.all %}
+                <div class="mt-4 grid grid-cols-2 gap-4">
+                    {% for image in news.images.all|slice:":2" %}
+                    <img src="{{ image.image.url }}" alt="News image"
+                         class="w-full h-48 object-cover rounded-lg">
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Social Interactions -->
+                <div class="mt-4 flex items-center space-x-4 text-gray-500">
+                    <div class="flex items-center space-x-1">
+                        <i class="far fa-heart"></i>
+                        <span>{{ news.likes.count }}</span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <i class="far fa-comment"></i>
+                        <span>{{ news.comments.count }}</span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <i class="far fa-share-square"></i>
+                        <span>{{ news.shares.count }}</span>
+                    </div>
+                </div>
+            </div>
+        </article>
+        {% empty %}
+        <div class="bg-white rounded-lg shadow-md p-6 text-center">
+            <p class="text-gray-500">No news articles yet.</p>
+        </div>
+        {% endfor %}
+        
+        <!-- Pagination -->
+        {% if news_items.has_other_pages %}
+        <div class="mt-8 flex justify-center">
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {% if news_items.has_previous %}
+                <a href="?page={{ news_items.previous_page_number }}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                
+                {% for num in news_items.paginator.page_range %}
+                {% if news_items.number == num %}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                    {{ num }}
+                </span>
+                {% else %}
+                <a href="?page={{ num }}"
+                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{ num }}
+                </a>
+                {% endif %}
+                {% endfor %}
+                
+                {% if news_items.has_next %}
+                <a href="?page={{ news_items.next_page_number }}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const followButton = document.getElementById('followButton');
+    if (followButton) {
+        followButton.addEventListener('click', function() {
+            const username = this.dataset.username;
+            fetch(`/user/${username}/follow/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update button text and style
+                    if (data.is_following) {
+                        this.textContent = 'Following';
+                        this.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                        this.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                    } else {
+                        this.textContent = 'Follow';
+                        this.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                        this.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                    }
+                    
+                    // Update followers count
+                    document.getElementById('followersCount').textContent = data.followers_count;
+                }
+            });
+        });
+    }
+</script>
+{% endblock %} 

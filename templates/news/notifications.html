@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
+                {% if notifications %}
+                <button id="markAllRead" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    Mark all as read
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            {% for notification in notifications %}
+            <div class="p-6 {% if not notification.is_read %}bg-blue-50{% endif %}" data-notification-id="{{ notification.id }}">
+                <div class="flex items-start space-x-3">
+                    <img src="{{ notification.actor.profile.avatar.url }}" alt="{{ notification.actor.username }}"
+                         class="h-10 w-10 rounded-full">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-900">
+                            <a href="{% url 'news:user_profile' notification.actor.username %}" class="font-medium text-blue-600 hover:text-blue-800">
+                                {{ notification.actor.username }}
+                            </a>
+                            {% if notification.notification_type == 'like' %}
+                                liked your news article
+                                <a href="{% url 'news:news_detail' notification.content_object.id %}" class="text-blue-600 hover:text-blue-800">
+                                    "{{ notification.content_object.title }}"
+                                </a>
+                            {% elif notification.notification_type == 'comment' %}
+                                commented on your news article
+                                <a href="{% url 'news:news_detail' notification.content_object.news.id %}" class="text-blue-600 hover:text-blue-800">
+                                    "{{ notification.content_object.news.title }}"
+                                </a>
+                            {% elif notification.notification_type == 'share' %}
+                                shared your news article
+                                <a href="{% url 'news:news_detail' notification.content_object.news.id %}" class="text-blue-600 hover:text-blue-800">
+                                    "{{ notification.content_object.news.title }}"
+                                </a>
+                            {% elif notification.notification_type == 'follow' %}
+                                started following you
+                            {% endif %}
+                        </p>
+                        <p class="mt-1 text-sm text-gray-500">
+                            {{ notification.created_at|timesince }} ago
+                        </p>
+                    </div>
+                    {% if not notification.is_read %}
+                    <button class="mark-read-btn text-sm text-gray-500 hover:text-blue-600">
+                        Mark as read
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-6 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No notifications</h3>
+                <p class="mt-1 text-sm text-gray-500">You're all caught up!</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark single notification as read
+        document.querySelectorAll('.mark-read-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const notificationDiv = this.closest('[data-notification-id]');
+                const notificationId = notificationDiv.dataset.notificationId;
+                
+                fetch(`{% url 'news:mark_notification_read' 0 %}`.replace('0', notificationId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        notificationDiv.classList.remove('bg-blue-50');
+                        this.remove();
+                    }
+                });
+            });
+        });
+
+        // Mark all notifications as read
+        const markAllReadBtn = document.getElementById('markAllRead');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch('{% url "news:mark_all_notifications_read" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.querySelectorAll('.bg-blue-50').forEach(div => {
+                            div.classList.remove('bg-blue-50');
+                        });
+                        document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                            btn.remove();
+                        });
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %} 
