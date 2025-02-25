@@ -6,11 +6,32 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Market Updates</h1>
-        <p class="mt-2 text-gray-600">Track stocks and cryptocurrencies</p>
+        <p class="mt-2 text-gray-600">Track stocks, cryptocurrencies, and market news</p>
     </div>
 
-    <!-- Search and Filter -->
+    <!-- Tabs -->
     <div class="mb-8">
+        <div class="sm:hidden">
+            <select id="mobile-tabs" class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                <option value="market">Market Data</option>
+                <option value="news">Market News</option>
+            </select>
+        </div>
+        <div class="hidden sm:block">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button class="market-tab px-4 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-600" data-tab="market">
+                    <i class="fas fa-chart-line mr-2"></i>Market Data
+                </button>
+                <button class="market-tab px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-700" data-tab="news">
+                    <i class="fas fa-newspaper mr-2"></i>Market News
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Market Data Section -->
+    <div id="market-section" class="space-y-6">
+        <!-- Search and Filter -->
         <div class="flex space-x-4">
             <div class="flex-1">
                 <input type="text" id="market-search" placeholder="Search stocks or crypto..." 
@@ -28,25 +49,57 @@
                 </button>
             </div>
         </div>
+
+        <!-- Market List -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">24h Change</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Market Cap</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="market-list">
+                        <!-- Market items will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <!-- Market List -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">24h Change</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Market Cap</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200" id="market-list">
-                    <!-- Market items will be loaded here -->
-                </tbody>
-            </table>
+    <!-- Market News Section -->
+    <div id="news-section" class="hidden space-y-6">
+        <!-- News Categories -->
+        <div class="flex space-x-2 overflow-x-auto pb-2">
+            <button class="news-category-btn active whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-600" data-category="all">
+                All News
+            </button>
+            <button class="news-category-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-category="stocks">
+                Stock Market
+            </button>
+            <button class="news-category-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-category="crypto">
+                Cryptocurrency
+            </button>
+            <button class="news-category-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-category="economy">
+                Economy
+            </button>
+            <button class="news-category-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:bg-gray-50" data-category="analysis">
+                Market Analysis
+            </button>
+        </div>
+
+        <!-- News Grid -->
+        <div id="market-news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- News items will be loaded here -->
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="news-loading-indicator" class="hidden text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
         </div>
     </div>
 </div>
@@ -55,34 +108,96 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('market-search');
+    const marketSection = document.getElementById('market-section');
+    const newsSection = document.getElementById('news-section');
     const marketList = document.getElementById('market-list');
-    let currentFilter = 'all';
+    const newsGrid = document.getElementById('market-news-grid');
+    const searchInput = document.getElementById('market-search');
+    const loadingIndicator = document.getElementById('news-loading-indicator');
+    
+    let currentMarketFilter = 'all';
+    let currentNewsCategory = 'all';
     let marketData = [];
+    let newsPage = 1;
+    let loadingNews = false;
 
-    // Load initial data
-    fetchMarketData();
+    // Initialize
+    loadMarketData();
+    loadMarketNews('all');
 
-    // Search functionality
-    searchInput.addEventListener('input', function() {
-        filterMarketData();
+    // Tab switching
+    document.querySelectorAll('.market-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabType = this.dataset.tab;
+            
+            // Update UI
+            document.querySelectorAll('.market-tab').forEach(t => {
+                t.classList.remove('bg-blue-50', 'text-blue-600');
+                t.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            this.classList.remove('text-gray-500', 'hover:text-gray-700');
+            this.classList.add('bg-blue-50', 'text-blue-600');
+
+            // Show/hide sections
+            if (tabType === 'market') {
+                marketSection.classList.remove('hidden');
+                newsSection.classList.add('hidden');
+            } else {
+                marketSection.classList.add('hidden');
+                newsSection.classList.remove('hidden');
+            }
+        });
     });
 
-    // Filter buttons
+    // Mobile tab switching
+    document.getElementById('mobile-tabs').addEventListener('change', function() {
+        const tabType = this.value;
+        if (tabType === 'market') {
+            marketSection.classList.remove('hidden');
+            newsSection.classList.add('hidden');
+        } else {
+            marketSection.classList.add('hidden');
+            newsSection.classList.remove('hidden');
+        }
+    });
+
+    // Market data filtering
     document.querySelectorAll('.market-filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.market-filter-btn').forEach(b => {
-                b.classList.remove('active', 'bg-blue-50', 'text-blue-600');
-                b.classList.add('text-gray-500');
-            });
-            this.classList.add('active', 'bg-blue-50', 'text-blue-600');
-            this.classList.remove('text-gray-500');
-            currentFilter = this.dataset.type;
+            currentMarketFilter = this.dataset.type;
+            updateMarketFilterUI();
             filterMarketData();
         });
     });
 
-    function fetchMarketData() {
+    // News category filtering
+    document.querySelectorAll('.news-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const category = this.dataset.category;
+            if (category === currentNewsCategory) return;
+
+            updateNewsCategoryUI(this);
+            newsPage = 1;
+            newsGrid.innerHTML = '';
+            currentNewsCategory = category;
+            loadMarketNews(category);
+        });
+    });
+
+    // Search functionality
+    searchInput.addEventListener('input', filterMarketData);
+
+    // Infinite scroll for news
+    window.addEventListener('scroll', function() {
+        if (loadingNews || newsSection.classList.contains('hidden')) return;
+        
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) {
+            newsPage++;
+            loadMarketNews(currentNewsCategory, true);
+        }
+    });
+
+    function loadMarketData() {
         fetch('/api/market-data/')
             .then(response => response.json())
             .then(data => {
@@ -97,11 +212,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const filteredData = marketData.filter(item => {
             const matchesSearch = item.symbol.toLowerCase().includes(searchTerm) || 
                                 item.name.toLowerCase().includes(searchTerm);
-            const matchesFilter = currentFilter === 'all' || item.type === currentFilter;
+            const matchesFilter = currentMarketFilter === 'all' || item.type === currentMarketFilter;
             return matchesSearch && matchesFilter;
         });
 
         renderMarketList(filteredData);
+    }
+
+    function loadMarketNews(category, append = false) {
+        loadingNews = true;
+        loadingIndicator.classList.remove('hidden');
+
+        fetch(`/api/market-news/?category=${category}&page=${newsPage}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.classList.add('hidden');
+                loadingNews = false;
+
+                if (!append) {
+                    newsGrid.innerHTML = '';
+                }
+
+                data.news.forEach(news => {
+                    const article = createNewsCard(news);
+                    newsGrid.appendChild(article);
+                });
+
+                if (!data.has_more) {
+                    window.removeEventListener('scroll', loadMarketNews);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading market news:', error);
+                loadingIndicator.classList.add('hidden');
+                loadingNews = false;
+            });
+    }
+
+    function updateMarketFilterUI() {
+        document.querySelectorAll('.market-filter-btn').forEach(btn => {
+            if (btn.dataset.type === currentMarketFilter) {
+                btn.classList.add('active', 'bg-blue-50', 'text-blue-600');
+                btn.classList.remove('text-gray-500');
+            } else {
+                btn.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+                btn.classList.add('text-gray-500');
+            }
+        });
+    }
+
+    function updateNewsCategoryUI(selectedBtn) {
+        document.querySelectorAll('.news-category-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+            btn.classList.add('text-gray-500', 'hover:bg-gray-50');
+        });
+        selectedBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+        selectedBtn.classList.add('active', 'bg-blue-50', 'text-blue-600');
     }
 
     function renderMarketList(data) {
@@ -126,6 +292,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
             </tr>
         `).join('');
+    }
+
+    function createNewsCard(news) {
+        const article = document.createElement('article');
+        article.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200';
+        
+        article.innerHTML = `
+            <div class="relative">
+                <img src="${news.image_url}" alt="${news.title}" class="w-full h-48 object-cover">
+                <div class="absolute top-2 right-2">
+                    <span class="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                        ${news.category}
+                    </span>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-sm text-gray-500">${news.source}</p>
+                    <p class="text-sm text-gray-500">${news.published_at}</p>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">${news.title}</h2>
+                <p class="text-gray-600 mb-4">${news.summary}</p>
+                <a href="${news.url}" target="_blank" rel="noopener noreferrer" 
+                   class="text-blue-600 hover:text-blue-800">Read Full Article</a>
+            </div>
+        `;
+
+        return article;
     }
 });
 </script>

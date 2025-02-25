@@ -20,7 +20,7 @@ class NewsForm(forms.ModelForm):
         required=False,
         widget=MultipleFileInput(attrs={
             'accept': 'image/*',
-            'class': 'sr-only'
+            'class': 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
         }),
         help_text="Upload images"
     )
@@ -29,7 +29,7 @@ class NewsForm(forms.ModelForm):
         required=False,
         widget=forms.ClearableFileInput(attrs={
             'accept': 'video/*',
-            'class': 'sr-only'
+            'class': 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
         }),
         help_text="Upload video"
     )

@@ -10,12 +10,14 @@
         <div class="p-6 border-b">
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
-                    <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
-                         class="h-12 w-12 rounded-full">
-                    <div class="ml-4">
-                        <h2 class="text-lg font-medium text-gray-900">{{ news.author.username }}</h2>
-                        <p class="text-sm text-gray-500">{{ news.created_at|date:"F j, Y" }}</p>
-                    </div>
+                    <a href="{% url 'news:user_profile' news.author.username %}" class="flex items-center group">
+                        <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
+                             class="h-12 w-12 rounded-full">
+                        <div class="ml-4">
+                            <h2 class="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ news.author.username }}</h2>
+                            <p class="text-sm text-gray-500">{{ news.created_at|date:"F j, Y" }}</p>
+                        </div>
+                    </a>
                 </div>
                 {% if user == news.author %}
                 <div class="flex space-x-2">
@@ -60,7 +62,10 @@
             {% if news.video %}
             <div class="mb-6">
                 <div class="relative" style="padding-top: 177.78%">  <!-- 16:9 aspect ratio (9/16 * 100) -->
-                    <video controls class="absolute inset-0 w-full h-full object-cover rounded-lg">
+                    <video class="absolute inset-0 w-full h-full object-cover rounded-lg hover-play-video" 
+                           preload="metadata"
+                           muted
+                           loop>
                         <source src="{{ news.video.url }}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -100,4 +105,27 @@
 
 {% block extra_js %}
 {% include "news/includes/news_detail_js.html" %}
+<script>
+    // Video hover play functionality
+    document.querySelectorAll('.hover-play-video').forEach(video => {
+        video.addEventListener('mouseover', function() {
+            this.play();
+        });
+        
+        video.addEventListener('mouseout', function() {
+            this.pause();
+            // Optionally reset to first frame
+            this.currentTime = 0;
+        });
+        
+        // For touch devices
+        video.addEventListener('touchstart', function() {
+            if (this.paused) {
+                this.play();
+            } else {
+                this.pause();
+            }
+        });
+    });
+</script>
 {% endblock %} 

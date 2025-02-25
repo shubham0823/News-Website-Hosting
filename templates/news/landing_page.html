@@ -36,71 +36,54 @@
         <!-- Trending News -->
         <section class="mb-12">
             <h2 class="text-2xl font-bold text-gray-900 mb-6">Trending News</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for news in trending_news %}
                 <article class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <!-- Author Info - Moved to top -->
+                    <!-- Author Info -->
                     <div class="p-3 border-b">
-                        <div class="flex items-center">
+                        <a href="{% url 'news:user_profile' news.author.username %}" class="flex items-center group">
                             <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}"
                                  class="h-8 w-8 rounded-full">
                             <div class="ml-2">
-                                <p class="text-sm font-medium text-gray-900">{{ news.author.username }}</p>
-                                <p class="text-xs text-gray-500">{{ news.created_at|date:"F j, Y" }}</p>
+                                <p class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ news.author.username }}</p>
+                                <p class="text-xs text-gray-500">{{ news.created_at|timesince }} ago</p>
                             </div>
-                        </div>
+                        </a>
                     </div>
                     
-                    <!-- Media -->
-                    {% if news.images.exists %}
-                    <div class="relative" style="padding-top: 177.78%">
-                        <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}"
-                             class="absolute inset-0 w-full h-full object-cover">
-                    </div>
-                    {% elif news.video %}
-                    <div class="relative" style="padding-top: 177.78%">
-                        <video class="absolute inset-0 w-full h-full object-cover">
+                    {% if news.video %}
+                    <div class="relative" style="padding-top: 125%">  <!-- 4:5 aspect ratio (5/4 * 100 = 125%) -->
+                        <video class="absolute inset-0 w-full h-full object-cover hover-play-video" 
+                               preload="metadata"
+                               muted
+                               loop>
                             <source src="{{ news.video.url }}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                     </div>
+                    {% elif news.images.first %}
+                    <div class="relative" style="padding-top: 125%">  <!-- 4:5 aspect ratio -->
+                        <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}" 
+                             class="absolute inset-0 w-full h-full object-cover">
+                    </div>
                     {% endif %}
-                    
-                    <!-- Content -->
                     <div class="p-4">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                            <a href="{% url 'news:news_detail' news.pk %}" class="hover:text-blue-600">
-                                {{ news.title|truncatechars:60 }}
+                        <h3 class="text-lg font-semibold mb-2">
+                            <a href="{% url 'news:news_detail' news.pk %}" class="text-gray-900 hover:text-blue-600">
+                                {{ news.title }}
                             </a>
                         </h3>
-                        
-                        <p class="text-gray-600 text-sm mb-3">{{ news.content|truncatechars:120 }}</p>
-                        
-                        <!-- Hashtags -->
-                        {% if news.hashtags.exists %}
-                        <div class="mb-3">
-                            {% for tag in news.hashtags.all %}
-                            <a href="{% url 'news:hashtag' tag.name %}" class="inline-block text-blue-600 hover:text-blue-800 text-sm mr-2">
-                                #{{ tag.name }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Interactions -->
-                        <div class="flex items-center text-sm text-gray-500 space-x-4">
-                            <div class="flex items-center">
-                                <i class="fas fa-heart mr-1 {% if request.user in news.likes.all %}text-red-500{% endif %}"></i>
-                                <span>{{ news.likes.count }}</span>
+                        <p class="text-gray-600 mb-4">{{ news.content|truncatewords:30 }}</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <span class="text-gray-500">
+                                    <i class="fas fa-heart"></i> {{ news.likes.count }}
+                                </span>
+                                <span class="text-gray-500">
+                                    <i class="fas fa-comment"></i> {{ news.comments.count }}
+                                </span>
                             </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-comment mr-1"></i>
-                                <span>{{ news.comments.count }}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-share mr-1"></i>
-                                <span>{{ news.shares.count }}</span>
-                            </div>
+                            <span class="text-sm text-gray-500">{{ news.created_at|timesince }} ago</span>
                         </div>
                     </div>
                 </article>
@@ -419,6 +402,28 @@ document.querySelectorAll('.market-tab').forEach(tab => {
         
         // Show selected container
         document.getElementById(`${this.dataset.type}-container`).classList.remove('hidden');
+    });
+});
+
+// Video hover play functionality
+document.querySelectorAll('.hover-play-video').forEach(video => {
+    video.addEventListener('mouseover', function() {
+        this.play();
+    });
+    
+    video.addEventListener('mouseout', function() {
+        this.pause();
+        // Optionally reset to first frame
+        this.currentTime = 0;
+    });
+    
+    // For touch devices
+    video.addEventListener('touchstart', function() {
+        if (this.paused) {
+            this.play();
+        } else {
+            this.pause();
+        }
     });
 });
 </script>

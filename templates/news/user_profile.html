@@ -4,176 +4,305 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Profile Header with Cover Image -->
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div class="relative h-48 bg-gradient-to-r from-blue-500 to-blue-600">
-            <div class="absolute bottom-0 left-0 right-0 px-6 py-4 transform translate-y-1/2">
-                <div class="flex items-end">
-                    <img src="{{ profile_user.profile.avatar.url }}" alt="{{ profile_user.username }}" 
-                         class="h-32 w-32 rounded-full border-4 border-white object-cover">
-                    <div class="ml-6 pb-4">
-                        <h1 class="text-3xl font-bold text-white">{{ profile_user.username }}</h1>
-                        <p class="text-blue-100">Joined {{ profile_user.date_joined|date:"F Y" }}</p>
+    <!-- Profile Header -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div class="p-6">
+            <div class="flex items-start">
+                <!-- Profile Picture Section -->
+                <div class="relative group">
+                    <img class="h-32 w-32 rounded-full border-4 border-white object-cover shadow-lg" 
+                         src="{{ profile_user.profile.avatar.url }}" 
+                         alt="{{ profile_user.username }}"
+                         id="profileImage">
+                    
+                    {% if user == profile_user %}
+                    <div class="absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                         onclick="document.getElementById('avatarInput').click()">
+                        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Profile Stats -->
-        <div class="mt-20 px-6 py-6 border-b border-gray-200">
-            <div class="flex justify-between items-center">
-                <div class="flex space-x-8">
-                    <a href="{% url 'news:followers_list' profile_user.username %}" class="text-center hover:text-blue-600 transition-colors duration-200">
-                        <div class="text-2xl font-bold" id="followerCount">{{ followers_count }}</div>
-                        <div class="text-gray-600">Followers</div>
-                    </a>
-                    <a href="{% url 'news:following_list' profile_user.username %}" class="text-center hover:text-blue-600 transition-colors duration-200">
-                        <div class="text-2xl font-bold">{{ following_count }}</div>
-                        <div class="text-gray-600">Following</div>
-                    </a>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold">{{ news_count }}</div>
-                        <div class="text-gray-600">Posts</div>
-                    </div>
-                </div>
-                {% if user.is_authenticated and user != profile_user %}
-                <button id="followButton" 
-                        data-username="{{ profile_user.username }}"
-                        class="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-full shadow-sm text-white {% if is_following %}bg-gray-600 hover:bg-gray-700{% else %}bg-blue-600 hover:bg-blue-700{% endif %} transition-all duration-200 transform hover:scale-105">
-                    {% if is_following %}
-                        Following
-                    {% else %}
-                        Follow
+                    <form id="avatarForm" method="POST" enctype="multipart/form-data" class="hidden">
+                        {% csrf_token %}
+                        <input type="file" id="avatarInput" name="avatar" accept="image/*" class="hidden">
+                    </form>
                     {% endif %}
-                </button>
-                {% endif %}
-            </div>
-            {% if profile_user.profile.bio %}
-            <p class="mt-4 text-gray-600">{{ profile_user.profile.bio }}</p>
-            {% endif %}
-        </div>
+                </div>
 
-        <!-- User's Posts -->
-        <div class="px-6 py-6">
-            <h2 class="text-2xl font-bold mb-6">Posts</h2>
-            <div class="grid grid-cols-1 gap-6">
-                {% for news in news_items %}
-                <article class="bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-all duration-200">
-                    {% if news.images.first %}
-                    <div class="relative h-48">
-                        <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}" 
-                             class="absolute inset-0 w-full h-full object-cover">
-                    </div>
-                    {% endif %}
-                    <div class="p-6">
-                        <h3 class="text-xl font-bold mb-2 hover:text-blue-600 transition-colors duration-200">
-                            <a href="{% url 'news:news_detail' news.pk %}">{{ news.title }}</a>
-                        </h3>
-                        <p class="text-gray-600 mb-4">{{ news.content|truncatewords:50 }}</p>
-                        <div class="flex items-center justify-between">
-                            <div class="flex space-x-4 text-gray-500">
-                                <span class="flex items-center">
-                                    <i class="far fa-heart mr-1"></i>
-                                    {{ news.likes.count }}
-                                </span>
-                                <span class="flex items-center">
-                                    <i class="far fa-comment mr-1"></i>
-                                    {{ news.comments.count }}
-                                </span>
-                                <span class="flex items-center">
-                                    <i class="far fa-share-square mr-1"></i>
-                                    {{ news.shares.count }}
-                                </span>
-                            </div>
-                            <span class="text-gray-500 text-sm">{{ news.created_at|date:"F j, Y" }}</span>
+                <!-- Profile Info and Stats -->
+                <div class="ml-8 flex-1">
+                    <div class="flex justify-between items-start">
+                        <!-- Name and Bio -->
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">{{ profile_user.username }}</h1>
+                            {% if profile_user.profile.bio %}
+                            <p class="text-gray-600 mt-1">{{ profile_user.profile.bio }}</p>
+                            {% endif %}
                         </div>
+
+                        <!-- Follow Button -->
+                        {% if user.is_authenticated and user != profile_user %}
+                        <button id="followButton" 
+                                data-username="{{ profile_user.username }}"
+                                class="relative px-4 py-2 rounded-full {% if user.profile in profile_user.profile.followers.all %}bg-gray-200 text-gray-800{% else %}bg-blue-600 text-white{% endif %} hover:opacity-90 transition-all duration-200 disabled:opacity-50">
+                            <span class="inline-flex items-center">
+                                <span class="follow-text">
+                                    {% if user.profile in profile_user.profile.followers.all %}
+                                        Following
+                                    {% else %}
+                                        Follow
+                                    {% endif %}
+                                </span>
+                                <svg class="hidden loading-spinner ml-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </span>
+                        </button>
+                        {% endif %}
                     </div>
-                </article>
-                {% empty %}
-                <div class="text-center py-12">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No posts yet</h3>
-                    <p class="mt-1 text-sm text-gray-500">{{ profile_user.username }} hasn't posted any news yet.</p>
+
+                    <!-- Stats Row -->
+                    <div class="flex space-x-8 mt-6">
+                        <div class="text-center">
+                            <span class="block text-2xl font-bold text-gray-900">{{ user_news.count }}</span>
+                            <span class="text-gray-600">Posts</span>
+                        </div>
+                        <a href="{% url 'news:followers_list' profile_user.username %}" 
+                           class="text-center group relative hover:text-blue-600 transition-colors">
+                            <span class="block text-2xl font-bold text-gray-900" id="followersCount">
+                                {{ profile_user.profile.followers.count }}
+                            </span>
+                            <span class="text-gray-600 group-hover:text-blue-600">Followers</span>
+                            <!-- Tooltip -->
+                            <div class="absolute z-10 w-48 px-2 py-1 -left-1/2 bottom-0 transform translate-y-full 
+                                      bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible
+                                      group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                Click to see who follows {{ profile_user.username }}
+                            </div>
+                        </a>
+                        <a href="{% url 'news:following_list' profile_user.username %}" 
+                           class="text-center group relative hover:text-blue-600 transition-colors">
+                            <span class="block text-2xl font-bold text-gray-900">
+                                {{ profile_user.profile.following.count }}
+                            </span>
+                            <span class="text-gray-600 group-hover:text-blue-600">Following</span>
+                            <!-- Tooltip -->
+                            <div class="absolute z-10 w-48 px-2 py-1 -left-1/2 bottom-0 transform translate-y-full 
+                                      bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible
+                                      group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                Click to see who {{ profile_user.username }} follows
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                {% endfor %}
             </div>
+        </div>
+    </div>
 
-            <!-- Pagination -->
-            {% if news_items.has_other_pages %}
-            <div class="mt-8 flex justify-center">
-                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    {% if news_items.has_previous %}
-                    <a href="?page={{ news_items.previous_page_number }}" 
-                       class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                        Previous
-                    </a>
-                    {% endif %}
-
-                    {% for num in news_items.paginator.page_range %}
-                    {% if news_items.number == num %}
-                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
-                        {{ num }}
-                    </span>
-                    {% else %}
-                    <a href="?page={{ num }}" 
-                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                        {{ num }}
-                    </a>
-                    {% endif %}
-                    {% endfor %}
-
-                    {% if news_items.has_next %}
-                    <a href="?page={{ news_items.next_page_number }}" 
-                       class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                        Next
-                    </a>
-                    {% endif %}
-                </nav>
+    <!-- User's Posts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for news in user_news %}
+        <article class="bg-white rounded-lg shadow-md overflow-hidden">
+            {% if news.images.exists %}
+            <div class="relative" style="padding-top: 125%">  <!-- 4:5 aspect ratio -->
+                <img src="{{ news.images.first.image.url }}" 
+                     alt="{{ news.title }}" 
+                     class="absolute inset-0 w-full h-full object-cover">
+            </div>
+            {% elif news.video %}
+            <div class="relative" style="padding-top: 125%">  <!-- 4:5 aspect ratio -->
+                <video class="absolute inset-0 w-full h-full object-cover hover-play-video"
+                       preload="metadata"
+                       muted
+                       loop>
+                    <source src="{{ news.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            {% endif %}
+            
+            <div class="p-4">
+                <div class="flex items-center mb-4">
+                    <img src="{{ news.author.profile.avatar.url }}" 
+                         alt="{{ news.author.username }}" 
+                         class="h-8 w-8 rounded-full">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900">{{ news.author.username }}</p>
+                        <p class="text-xs text-gray-500">{{ news.created_at|timesince }} ago</p>
+                    </div>
+                </div>
+                
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ news.title }}</h2>
+                <p class="text-gray-600 text-sm mb-4">{{ news.content|truncatewords:30 }}</p>
+                
+                <div class="flex items-center justify-between text-sm text-gray-500">
+                    <div class="flex space-x-4">
+                        <span>
+                            <i class="fas fa-heart {% if user in news.likes.all %}text-red-500{% endif %}"></i>
+                            {{ news.likes.count }}
+                        </span>
+                        <span>
+                            <i class="fas fa-comment"></i>
+                            {{ news.comments.count }}
+                        </span>
+                        <span>
+                            <i class="fas fa-share"></i>
+                            {{ news.shares.count }}
+                        </span>
+                    </div>
+                    <a href="{% url 'news:news_detail' news.pk %}" 
+                       class="text-blue-600 hover:text-blue-800">Read More</a>
+                </div>
+            </div>
+        </article>
+        {% empty %}
+        <div class="col-span-full text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No posts yet</h3>
+            {% if user == profile_user %}
+            <div class="mt-6">
+                <a href="{% url 'news:create_news' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    Create Your First Post
+                </a>
             </div>
             {% endif %}
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const followButton = document.getElementById('followButton');
-    if (followButton) {
-        followButton.addEventListener('click', function() {
-            const username = this.dataset.username;
-            fetch(`/news/user/${username}/follow/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Update button text and style
-                    this.textContent = data.is_following ? 'Following' : 'Follow';
-                    if (data.is_following) {
-                        this.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                        this.classList.add('bg-gray-600', 'hover:bg-gray-700');
-                    } else {
-                        this.classList.remove('bg-gray-600', 'hover:bg-gray-700');
-                        this.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    // Profile picture upload functionality
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarForm = document.getElementById('avatarForm');
+    const profileImage = document.getElementById('profileImage');
+
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const formData = new FormData(avatarForm);
+                
+                fetch('{% url "news:update_profile_picture" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update profile picture
+                        profileImage.src = data.avatar_url;
                     }
-                    
-                    // Update follower count
-                    const followerCount = document.getElementById('followerCount');
-                    if (followerCount) {
-                        followerCount.textContent = data.follower_count;
-                    }
-                }
-            });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
         });
     }
-});
+
+    // Follow/Unfollow functionality
+    const followButton = document.getElementById('followButton');
+    if (followButton) {
+        followButton.addEventListener('click', async function() {
+            const username = this.dataset.username;
+            const loadingSpinner = this.querySelector('.loading-spinner');
+            const followText = this.querySelector('.follow-text');
+            
+            try {
+                // Disable button and show loading state
+                this.disabled = true;
+                loadingSpinner.classList.remove('hidden');
+                
+                const response = await fetch(`/news/user/${username}/follow/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Update button appearance
+                    if (data.is_following) {
+                        followText.textContent = 'Following';
+                        this.classList.remove('bg-blue-600', 'text-white');
+                        this.classList.add('bg-gray-200', 'text-gray-800');
+                        
+                        // Add unfollow confirmation on hover
+                        this.addEventListener('mouseenter', function() {
+                            if (followText.textContent === 'Following') {
+                                followText.textContent = 'Unfollow';
+                                this.classList.add('bg-red-100', 'text-red-600');
+                            }
+                        });
+                        
+                        this.addEventListener('mouseleave', function() {
+                            if (followText.textContent === 'Unfollow') {
+                                followText.textContent = 'Following';
+                                this.classList.remove('bg-red-100', 'text-red-600');
+                            }
+                        });
+                    } else {
+                        followText.textContent = 'Follow';
+                        this.classList.remove('bg-gray-200', 'text-gray-800', 'bg-red-100', 'text-red-600');
+                        this.classList.add('bg-blue-600', 'text-white');
+                        
+                        // Remove hover events
+                        this.removeEventListener('mouseenter', null);
+                        this.removeEventListener('mouseleave', null);
+                    }
+                    
+                    // Update followers count with animation
+                    const followersCount = document.getElementById('followersCount');
+                    followersCount.style.transform = 'scale(1.1)';
+                    followersCount.textContent = data.followers_count;
+                    setTimeout(() => {
+                        followersCount.style.transform = 'scale(1)';
+                    }, 200);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                // Re-enable button and hide loading state
+                this.disabled = false;
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+    }
+
+    // Video hover play functionality
+    document.querySelectorAll('.hover-play-video').forEach(video => {
+        video.addEventListener('mouseover', function() {
+            this.play();
+        });
+        
+        video.addEventListener('mouseout', function() {
+            this.pause();
+            this.currentTime = 0;
+        });
+        
+        // For touch devices
+        video.addEventListener('touchstart', function() {
+            if (this.paused) {
+                this.play();
+            } else {
+                this.pause();
+            }
+        });
+    });
 </script>
 {% endblock %} 

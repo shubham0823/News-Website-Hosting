@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Major Countries - NewsHub{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Major Countries News</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for code, name in countries.items %}
+        <a href="{% url 'news:country_news' code %}" 
+           class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center space-x-4">
+                <img src="https://flagcdn.com/w80/{{ code }}.png" 
+                     alt="{{ name }} flag"
+                     class="w-12 h-8 object-cover rounded">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ name }}</h2>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

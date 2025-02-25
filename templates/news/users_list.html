@@ -1,0 +1,76 @@
+{% extends 'news/base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">{{ profile_user.username }}'s {{ list_type }}</h1>
+    
+    <div class="grid gap-6">
+        {% for user_profile in users_list %}
+        <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <img src="{{ user_profile.avatar.url }}" alt="{{ user_profile.user.username }}'s avatar"
+                     class="w-12 h-12 rounded-full object-cover">
+                <div>
+                    <a href="{% url 'news:user_profile' user_profile.user.username %}" 
+                       class="text-lg font-semibold hover:text-blue-600">
+                        {{ user_profile.user.username }}
+                    </a>
+                    {% if user_profile.bio %}
+                    <p class="text-gray-600 text-sm">{{ user_profile.bio }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if user.is_authenticated and user != user_profile.user %}
+            <button data-username="{{ user_profile.user.username }}"
+                    class="follow-button px-4 py-2 rounded-full {% if user.profile in user_profile.followers.all %}bg-gray-200 text-gray-800{% else %}bg-blue-600 text-white{% endif %} hover:opacity-90 transition-opacity">
+                {% if user.profile in user_profile.followers.all %}
+                    Following
+                {% else %}
+                    Follow
+                {% endif %}
+            </button>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p class="text-gray-600 text-center py-8">No {{ list_type|lower }} found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Follow/Unfollow functionality for all buttons
+    document.querySelectorAll('.follow-button').forEach(button => {
+        button.addEventListener('click', async function() {
+            const username = this.dataset.username;
+            try {
+                const response = await fetch(`/news/user/${username}/follow/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Update button appearance
+                    if (data.is_following) {
+                        this.textContent = 'Following';
+                        this.classList.remove('bg-blue-600', 'text-white');
+                        this.classList.add('bg-gray-200', 'text-gray-800');
+                    } else {
+                        this.textContent = 'Follow';
+                        this.classList.remove('bg-gray-200', 'text-gray-800');
+                        this.classList.add('bg-blue-600', 'text-white');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %} 

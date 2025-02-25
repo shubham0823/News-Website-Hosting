@@ -43,6 +43,7 @@
                 <div>
                     <label for="{{ form.username.id_for_label }}" class="sr-only">Username</label>
                     {{ form.username }}
+                    <p class="mt-1 text-sm text-gray-500">Choose a unique username (letters, numbers, and @/./+/-/_ only)</p>
                     {% if form.username.errors %}
                     <p class="mt-2 text-sm text-red-600">{{ form.username.errors.0 }}</p>
                     {% endif %}
@@ -51,6 +52,7 @@
                 <div class="mt-4">
                     <label for="{{ form.email.id_for_label }}" class="sr-only">Email address</label>
                     {{ form.email }}
+                    <p class="mt-1 text-sm text-gray-500">We'll never share your email with anyone else</p>
                     {% if form.email.errors %}
                     <p class="mt-2 text-sm text-red-600">{{ form.email.errors.0 }}</p>
                     {% endif %}
@@ -59,17 +61,21 @@
                 <div class="mt-4">
                     <label for="{{ form.password1.id_for_label }}" class="sr-only">Password</label>
                     {{ form.password1 }}
+                    <ul class="mt-1 text-sm text-gray-500 list-disc list-inside">
+                        <li>At least 8 characters long</li>
+                        <li>Must include letters and numbers</li>
+                        <li>Cannot be too similar to your username</li>
+                        <li>Cannot be a commonly used password</li>
+                    </ul>
                     {% if form.password1.errors %}
                     <p class="mt-2 text-sm text-red-600">{{ form.password1.errors.0 }}</p>
-                    {% endif %}
-                    {% if form.password1.help_text %}
-                    <p class="mt-2 text-sm text-gray-500">{{ form.password1.help_text|safe }}</p>
                     {% endif %}
                 </div>
                 
                 <div class="mt-4">
                     <label for="{{ form.password2.id_for_label }}" class="sr-only">Confirm Password</label>
                     {{ form.password2 }}
+                    <p class="mt-1 text-sm text-gray-500">Re-enter your password to confirm</p>
                     {% if form.password2.errors %}
                     <p class="mt-2 text-sm text-red-600">{{ form.password2.errors.0 }}</p>
                     {% endif %}

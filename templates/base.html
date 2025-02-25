@@ -61,92 +61,97 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-100 dark:bg-dark-bg">
-    <!-- Navigation -->
-    <nav class="bg-white dark:bg-dark-bg border-b border-gray-200 dark:border-dark-secondary fixed w-full z-30 top-0 transition-all duration-300 shadow-sm hover:shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <!-- Left section with logo and navigation -->
+    <!-- Top red banner -->
+    <div class="bg-rose-500 text-white py-2 px-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="text-xl font-bold">NewHub</div>
+            <div class="flex items-center space-x-4">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <a href="{% url 'news:landing_page' %}" class="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors duration-200">NewsHub</a>
+                    <img src="https://flagcdn.com/w20/gb.png" alt="EN" class="h-5 w-5">
+                    <span class="ml-1">EN</span>
+                </div>
+                <!-- Theme toggle -->
+                <button onclick="toggleTheme()" class="p-1 rounded-full hover:bg-rose-600 transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
                     </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="{% url 'news:landing_page' %}"
-                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
-                            Home
-                        </a>
-                        <a href="{% url 'news:explore' %}"
-                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
-                            Explore
-                        </a>
+
+    <!-- Main navigation -->
+    <nav class="bg-white dark:bg-dark-bg border-b border-gray-200 dark:border-dark-secondary shadow-sm hover:shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Left section: Logo and nav links -->
+                <div class="flex items-center space-x-8">
+                    <a href="{% url 'news:landing_page' %}" class="flex items-center">
+                        <img src="/static/images/logo.png" alt="NewsHub" class="h-8 w-8">
+                    </a>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="{% url 'news:landing_page' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
+                        <a href="{% url 'news:explore' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Explore</a>
                         {% if user.is_authenticated %}
-                        <a href="{% url 'news:create_news' %}"
-                           class="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200">
-                            Create News
-                        </a>
+                        <a href="{% url 'news:create_news' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Create Post</a>
                         {% endif %}
                     </div>
                 </div>
 
-                <!-- Centered search form -->
-                <div class="flex-1 flex items-center justify-center max-w-xl px-2">
+                <!-- Center: Search bar -->
+                <div class="flex-1 max-w-2xl px-4">
                     <form class="w-full" action="{% url 'news:search_news' %}" method="GET">
-                        <div class="flex">
-                            <select name="type" class="rounded-l-md border border-gray-300 dark:border-dark-secondary dark:bg-dark-bg dark:text-dark-text px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
-                                <option value="news">News</option>
-                                <option value="users">Users</option>
-                            </select>
-                            <input type="text" name="q" placeholder="Search..." class="flex-1 border-y border-gray-300 dark:border-dark-secondary dark:bg-dark-bg dark:text-dark-text px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
-                            <button type="submit" class="rounded-r-md bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
+                        <div class="relative flex items-center">
+                            <div class="relative flex-1">
+                                <input type="text" 
+                                       name="q" 
+                                       placeholder="Search Keywords" 
+                                       class="w-full rounded-l-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white pl-10 pr-4 py-2 focus:ring-2 focus:ring-rose-500 focus:border-transparent">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <button type="submit" 
+                                    class="bg-rose-500 text-white px-4 py-2 rounded-r-md hover:bg-rose-600 transition-colors duration-200">
                                 Search
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- Right section with user menu -->
-                <div class="flex items-center">
-                    <!-- Theme toggle -->
-                    <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-secondary mr-4 transform hover:scale-110 transition-all duration-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 dark:text-dark-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    </button>
-
+                <!-- Right section: Auth buttons -->
+                <div class="flex items-center space-x-4">
                     {% if user.is_authenticated %}
                     <!-- Notifications -->
-                    <div class="ml-3 relative">
-                        <a href="{% url 'news:notifications' %}"
-                           class="bg-white p-1 rounded-full text-gray-400 hover:text-blue-600 transform hover:scale-110 transition-all duration-200">
-                            <span class="sr-only">View notifications</span>
+                    <a href="{% url 'news:notifications' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                             <i class="fas fa-bell"></i>
                         </a>
-                    </div>
-
-                    <!-- Profile dropdown -->
-                    <div class="ml-3 relative">
-                        <a href="{% url 'news:user_profile' user.username %}"
-                           class="flex items-center space-x-2 text-gray-500 hover:text-blue-600 transform hover:scale-105 transition-all duration-200">
-                            <img class="h-8 w-8 rounded-full object-cover ring-2 ring-transparent hover:ring-blue-500 transition-all duration-200"
-                                 src="{{ user.profile.avatar.url }}"
-                                 alt="{{ user.username }}">
-                            <span class="text-sm font-medium">{{ user.username }}</span>
-                        </a>
-                    </div>
-
+                    <!-- Profile -->
+                    <a href="{% url 'news:user_profile' user.username %}" class="flex items-center space-x-2">
+                        <img class="h-8 w-8 rounded-full object-cover" src="{{ user.profile.avatar.url }}" alt="{{ user.username }}">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.username }}</span>
+                    </a>
                     <!-- Logout -->
-                    <div class="ml-3 relative">
-                        <a href="{% url 'accounts:logout' %}"
-                           class="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors duration-200">
-                            Logout
-                        </a>
-                    </div>
+                    <a href="{% url 'accounts:logout' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Logout</a>
                     {% else %}
-                    <a href="{% url 'accounts:login' %}"
-                       class="text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors duration-200">Login</a>
-                    <a href="{% url 'accounts:register' %}"
-                       class="ml-4 text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transform hover:scale-105 transition-all duration-200">Sign up</a>
+                    <a href="{% url 'accounts:login' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Login</a>
+                    <a href="{% url 'accounts:register' %}" class="bg-rose-500 text-white px-4 py-2 rounded-md hover:bg-rose-600 transition-colors duration-200">Sign Up</a>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom navigation -->
+        <div class="border-t border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex space-x-8 py-3 overflow-x-auto items-center">
+                    <a href="{% url 'news:category_news' 'india' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Indian News</a>
+                    <a href="{% url 'news:trending_news' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Trending News</a>
+                    <a href="{% url 'news:category_news' 'stocks' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Stocks</a>
+                    <a href="{% url 'news:category_news' 'international' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">International News</a>
+                    <a href="{% url 'news:major_countries' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Major Country</a>
                 </div>
             </div>
         </div>
@@ -195,6 +200,62 @@
             </div>
             {% endif %}
             {% block content %}{% endblock %}
+            
+            <!-- Footer -->
+            <footer class="bg-blue-500 text-white mt-auto">
+                <!-- Newsletter Section -->
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div class="text-xl font-semibold">Newsletter</div>
+                        <div class="flex-1 max-w-xl w-full">
+                            <form class="flex gap-2">
+                                <input type="email" placeholder="Your email" 
+                                       class="flex-1 px-4 py-2 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-white">
+                                <button type="submit" class="bg-white text-blue-500 p-3 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="border-t border-blue-400">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <nav class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8">
+                            <a href="{% url 'news:landing_page' %}" class="hover:text-blue-100">Home</a>
+                            <a href="#" class="hover:text-blue-100">Experience</a>
+                            <a href="{% url 'news:explore' %}" class="hover:text-blue-100">News</a>
+                            <a href="#" class="hover:text-blue-100">About us</a>
+                            <a href="#" class="hover:text-blue-100">Jobs</a>
+                            <a href="#" class="hover:text-blue-100">Contact</a>
+                        </nav>
+
+                        <!-- Social Links -->
+                        <div class="flex justify-center space-x-6 mt-6">
+                            <a href="#" class="hover:text-blue-100">
+                                <span class="sr-only">Facebook</span>
+                                <i class="fab fa-facebook text-xl"></i>
+                            </a>
+                            <a href="#" class="hover:text-blue-100">
+                                <span class="sr-only">Twitter</span>
+                                <i class="fab fa-twitter text-xl"></i>
+                            </a>
+                            <a href="#" class="hover:text-blue-100">
+                                <span class="sr-only">YouTube</span>
+                                <i class="fab fa-youtube text-xl"></i>
+                            </a>
+                        </div>
+
+                        <!-- Copyright -->
+                        <div class="text-center mt-8 text-sm text-blue-100">
+                            © Copyright {% now "Y" %} - NewsHub
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 

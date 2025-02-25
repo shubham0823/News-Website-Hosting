@@ -1,192 +1,224 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}Explore - NewsHub{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
+    <!-- Filters -->
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Explore</h1>
-        <p class="mt-2 text-gray-600">Discover news from around the world</p>
-    </div>
-
-    <!-- Filter Tabs -->
-    <div class="mb-8 border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="News filters">
-            <button class="filter-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm {% if active_filter == 'trending' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" 
-                    data-filter="trending">
-                <i class="fas fa-fire mr-2"></i>
-                Trending News
-            </button>
-            <button class="filter-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm {% if active_filter == 'for_you' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}"
-                    data-filter="for_you">
-                <i class="fas fa-user-circle mr-2"></i>
-                For You
-            </button>
-            <button class="filter-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm {% if active_filter == 'followers' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}"
-                    data-filter="followers">
-                <i class="fas fa-users mr-2"></i>
-                Followers
-            </button>
-        </nav>
-    </div>
-
-    <!-- News Feed -->
-    <div id="news-feed" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for news in news_items %}
-        <article class="bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-all duration-200">
-            <!-- Author Info -->
-            <div class="p-4 border-b">
-                <div class="flex items-center">
-                    <a href="{% url 'news:user_profile' news.author.username %}" class="flex items-center hover:text-blue-600">
-                        <img src="{{ news.author.profile.avatar.url }}" alt="{{ news.author.username }}" 
-                             class="h-10 w-10 rounded-full object-cover">
-                        <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-900">{{ news.author.username }}</p>
-                            <p class="text-sm text-gray-500">{{ news.created_at|timesince }} ago</p>
-                        </div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- News Content -->
-            {% if news.images.first %}
-            <div class="relative h-48">
-                <img src="{{ news.images.first.image.url }}" alt="{{ news.title }}" 
-                     class="absolute inset-0 w-full h-full object-cover">
-            </div>
-            {% endif %}
-
-            <div class="p-4">
-                <h2 class="text-xl font-semibold mb-2">
-                    <a href="{% url 'news:news_detail' news.pk %}" class="hover:text-blue-600 transition-colors duration-200">
-                        {{ news.title }}
-                    </a>
-                </h2>
-                
-                <p class="text-gray-600 mb-4">{{ news.content|truncatewords:30 }}</p>
-
-                <!-- Social Interactions -->
-                <div class="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div class="flex space-x-4">
-                        <button class="like-btn flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors duration-200" 
-                                data-news-id="{{ news.pk }}">
-                            <i class="far fa-heart {% if user in news.likes.all %}text-red-500{% endif %}"></i>
-                            <span class="likes-count">{{ news.likes.count }}</span>
-                        </button>
-                        <a href="{% url 'news:news_detail' news.pk %}#comments" 
-                           class="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors duration-200">
-                            <i class="far fa-comment"></i>
-                            <span>{{ news.comments.count }}</span>
-                        </a>
-                        <button class="share-btn flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors duration-200" 
-                                data-news-id="{{ news.pk }}">
-                            <i class="far fa-share-square"></i>
-                            <span class="shares-count">{{ news.shares.count }}</span>
-                        </button>
-                    </div>
-                    <a href="{% url 'news:news_detail' news.pk %}" 
-                       class="text-blue-600 hover:text-blue-800 transition-colors duration-200">Read More</a>
-                </div>
-            </div>
-        </article>
-        {% empty %}
-        <div class="col-span-full text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No news found</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                {% if active_filter == 'followers' %}
-                Start following people to see their news here.
-                {% else %}
-                Check back later for more news.
-                {% endif %}
-            </p>
-            {% if active_filter == 'followers' %}
-            <div class="mt-6">
-                <a href="{% url 'news:landing_page' %}" 
-                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200">
-                    Discover Users
-                </a>
-            </div>
-            {% endif %}
+        <div class="sm:hidden">
+            <select id="mobile-tabs" class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                <option value="trending">Trending News</option>
+                <option value="for-you">For You</option>
+                <option value="followers">Followers</option>
+            </select>
         </div>
-        {% endfor %}
+        <div class="hidden sm:block">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button class="filter-btn px-4 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-600" 
+                        data-filter="trending">
+                    <i class="fas fa-fire mr-2"></i>Trending News
+                </button>
+                <button class="filter-btn px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-700" 
+                        data-filter="for-you">
+                    <i class="fas fa-user mr-2"></i>For You
+                </button>
+                <button class="filter-btn px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-700" 
+                        data-filter="followers">
+                    <i class="fas fa-users mr-2"></i>Followers
+                </button>
+            </nav>
+        </div>
     </div>
 
-    <!-- Pagination -->
-    {% if news_items.has_other_pages %}
-    <div class="mt-8 flex justify-center">
-        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-            {% if news_items.has_previous %}
-            <a href="?page={{ news_items.previous_page_number }}&filter={{ active_filter }}" 
-               class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                Previous
-            </a>
-            {% endif %}
-
-            {% for num in news_items.paginator.page_range %}
-            {% if news_items.number == num %}
-            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
-                {{ num }}
-            </span>
-            {% else %}
-            <a href="?page={{ num }}&filter={{ active_filter }}" 
-               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                {{ num }}
-            </a>
-            {% endif %}
-            {% endfor %}
-
-            {% if news_items.has_next %}
-            <a href="?page={{ news_items.next_page_number }}&filter={{ active_filter }}" 
-               class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                Next
-            </a>
-            {% endif %}
-        </nav>
+    <!-- News Grid -->
+    <div id="news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- News items will be loaded here -->
     </div>
-    {% endif %}
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="hidden text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+    </div>
+
+    <!-- End of Content Indicator -->
+    <div id="end-of-content" class="hidden text-center py-8 text-gray-500">
+        No more news to load
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    // Filter tabs functionality
-    $('.filter-tab').click(function() {
-        const filter = $(this).data('filter');
-        window.location.href = `?filter=${filter}`;
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const newsGrid = document.getElementById('news-grid');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const endOfContent = document.getElementById('end-of-content');
+    const mobileFilter = document.getElementById('mobile-tabs');
+    let currentFilter = 'trending';
+    let page = 1;
+    let loading = false;
+    let hasMore = true;
 
-    // Like functionality
-    $('.like-btn').click(function() {
-        const newsId = $(this).data('news-id');
-        const btn = $(this);
-        
-        $.post(`/news/${newsId}/like/`, {
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        })
-        .done(function(data) {
-            btn.find('.likes-count').text(data.likes_count);
-            btn.find('i').toggleClass('text-red-500');
+    // Initialize with trending news
+    loadNews('trending');
+
+    // Filter buttons click handlers
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            if (filter === currentFilter) return;
+
+            // Update UI
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-blue-50', 'text-blue-600');
+                b.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            this.classList.remove('text-gray-500', 'hover:text-gray-700');
+            this.classList.add('bg-blue-50', 'text-blue-600');
+
+            // Reset state
+            page = 1;
+            hasMore = true;
+            currentFilter = filter;
+            newsGrid.innerHTML = '';
+            endOfContent.classList.add('hidden');
+            loadNews(filter);
         });
     });
 
-    // Share functionality
-    $('.share-btn').click(function() {
-        const newsId = $(this).data('news-id');
-        const btn = $(this);
-        
-        $.post(`/news/${newsId}/share/`, {
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        })
-        .done(function(data) {
-            btn.find('.shares-count').text(data.shares_count);
-        });
+    // Mobile filter change handler
+    mobileFilter.addEventListener('change', function() {
+        page = 1;
+        hasMore = true;
+        currentFilter = this.value;
+        newsGrid.innerHTML = '';
+        endOfContent.classList.add('hidden');
+        loadNews(currentFilter);
     });
+
+    // Infinite scroll handler
+    function handleScroll() {
+        if (loading || !hasMore) return;
+        
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const contentHeight = document.body.offsetHeight - 1000;
+        
+        if (scrollPosition >= contentHeight) {
+            page++;
+            loadNews(currentFilter, true);
+        }
+    }
+
+    // Add scroll event listener
+    window.addEventListener('scroll', handleScroll);
+
+    function loadNews(filter, append = false) {
+        if (!hasMore) return;
+        
+        loading = true;
+        loadingIndicator.classList.remove('hidden');
+        endOfContent.classList.add('hidden');
+
+        fetch(`/api/news/?filter=${filter}&page=${page}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.classList.add('hidden');
+                loading = false;
+
+                if (!append) {
+                    newsGrid.innerHTML = '';
+                }
+
+                if (data.news && data.news.length > 0) {
+                    data.news.forEach(news => {
+                        const article = createNewsCard(news);
+                        newsGrid.appendChild(article);
+                    });
+                }
+
+                hasMore = data.has_more;
+                if (!hasMore) {
+                    endOfContent.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading news:', error);
+                loadingIndicator.classList.add('hidden');
+                loading = false;
+            });
+    }
+
+    function createNewsCard(news) {
+        const article = document.createElement('article');
+        article.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200';
+        
+        const image = news.images && news.images.length > 0 
+            ? `<img src="${news.images[0].url}" alt="${news.title}" class="w-full h-48 object-cover">`
+            : '';
+            
+        const video = news.video 
+            ? `<video class="w-full h-48 object-cover hover-play-video" preload="metadata" muted loop>
+                <source src="${news.video}" type="video/mp4">
+               </video>`
+            : '';
+
+        article.innerHTML = `
+            <div class="relative">
+                ${image || video}
+                <div class="absolute top-2 right-2 flex space-x-2">
+                    <span class="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                        <i class="fas fa-eye mr-1"></i>${news.views}
+                    </span>
+                    <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
+                        <i class="fas fa-share mr-1"></i>${news.shares_count}
+                    </span>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="flex items-center mb-4">
+                    <img src="${news.author.avatar}" alt="${news.author.username}" class="h-8 w-8 rounded-full">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900">${news.author.username}</p>
+                        <p class="text-xs text-gray-500">${news.created_at}</p>
+                    </div>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">${news.title}</h2>
+                <p class="text-gray-600 mb-4">${news.content.substring(0, 150)}...</p>
+                <div class="flex justify-between items-center">
+                    <div class="flex space-x-4">
+                        <span class="text-gray-500"><i class="fas fa-heart"></i> ${news.likes_count}</span>
+                        <span class="text-gray-500"><i class="fas fa-comment"></i> ${news.comments_count}</span>
+                    </div>
+                    <a href="/news/${news.id}/" class="text-blue-600 hover:text-blue-800">Read More</a>
+                </div>
+            </div>
+        `;
+
+        // Add video hover play functionality
+        const videoElement = article.querySelector('.hover-play-video');
+        if (videoElement) {
+            videoElement.addEventListener('mouseover', function() {
+                this.play();
+            });
+            
+            videoElement.addEventListener('mouseout', function() {
+                this.pause();
+                this.currentTime = 0;
+            });
+            
+            // For touch devices
+            videoElement.addEventListener('touchstart', function() {
+                if (this.paused) {
+                    this.play();
+                } else {
+                    this.pause();
+                }
+            });
+        }
+
+        return article;
+    }
 });
 </script>
 {% endblock %} 

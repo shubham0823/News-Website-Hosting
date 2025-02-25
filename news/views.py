@@ -8,7 +8,8 @@ from django.contrib.auth.models import User
 from .models import News, Comment, Profile, NewsImage, Notification, Share, Hashtag
 import requests
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Q, Count
+from django.db.models import Q, Count, ExpressionWrapper, F, FloatField, Case, When
+from django.db.models.functions import Extract, Now
 from .forms import NewsForm
 from django.db import models
 from django.utils import timezone
@@ -149,58 +150,193 @@ def landing_page(request):
     return render(request, 'news/landing_page.html', context)
 
 @login_required
-def explore_page(request):
-    # Get the filter type from query parameters
-    active_filter = request.GET.get('filter', 'trending')
-    
-    # Base queryset with all necessary related data
-    news_queryset = News.objects.select_related('author', 'author__profile')\
-        .prefetch_related('likes', 'comments', 'shares', 'images')\
-        .annotate(engagement_score=Count('likes') + Count('comments') + Count('shares'))
-    
-    if active_filter == 'trending':
-        # Get trending news based on engagement score in the last 7 days
-        seven_days_ago = timezone.now() - timezone.timedelta(days=7)
-        news_items = news_queryset.filter(created_at__gte=seven_days_ago)\
-            .order_by('-engagement_score', '-created_at')
-    elif active_filter == 'for_you':
-        # Get personalized news based on user's interests
-        followed_users = request.user.profile.following.values_list('user', flat=True)
-        liked_news = request.user.liked_news.values_list('author', flat=True)
-        interested_hashtags = Hashtag.objects.filter(
-            news_posts__in=request.user.liked_news.all()
-        ).values_list('name', flat=True)
+def follow_user(request, username):
+    """Handle follow/unfollow functionality"""
+    if request.method == 'POST':
+        user_to_follow = get_object_or_404(User, username=username)
+        user_profile = request.user.profile
         
-        news_items = news_queryset.filter(
-            Q(author__in=followed_users) |  # Posts from followed users
-            Q(author__in=liked_news) |      # Posts from authors whose content user has liked
-            Q(hashtags__name__in=interested_hashtags)  # Posts with hashtags user has interacted with
-        ).distinct().order_by('-created_at')
-    else:  # followers
-        # Get news only from followed users
-        followed_users = request.user.profile.following.values_list('user', flat=True)
-        news_items = news_queryset.filter(author__in=followed_users).order_by('-created_at')
+        # Check if already following
+        is_following = user_profile in user_to_follow.profile.followers.all()
+        
+        if is_following:
+            # Unfollow
+            user_to_follow.profile.followers.remove(user_profile)
+            # Create notification for unfollow
+            Notification.objects.filter(
+                recipient=user_to_follow,
+                notification_type='follow',
+                actor=request.user,
+            ).delete()
+        else:
+            # Follow
+            user_to_follow.profile.followers.add(user_profile)
+            # Create notification for new follow
+            Notification.objects.create(
+                recipient=user_to_follow,
+                notification_type='follow',
+                actor=request.user,
+                content_type=ContentType.objects.get_for_model(user_to_follow),
+                object_id=user_to_follow.id
+            )
+        
+        return JsonResponse({
+            'status': 'success',
+            'is_following': not is_following,
+            'followers_count': user_to_follow.profile.followers.count()
+        })
     
-    # Pagination
-    paginator = Paginator(news_items, 12)  # Show 12 news items per page
-    page = request.GET.get('page')
-    try:
-        news_items = paginator.page(page)
-    except PageNotAnInteger:
-        news_items = paginator.page(1)
-    except EmptyPage:
-        news_items = paginator.page(paginator.num_pages)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def followers_list(request, username):
+    """Display list of followers for a user"""
+    user = get_object_or_404(User, username=username)
+    followers = user.profile.followers.select_related('user').all()
     
     context = {
-        'news_items': news_items,
-        'active_filter': active_filter
+        'profile_user': user,
+        'users_list': followers,
+        'list_type': 'Followers'
     }
-    return render(request, 'news/explore.html', context)
+    
+    return render(request, 'news/users_list.html', context)
+
+def following_list(request, username):
+    """Display list of users being followed"""
+    user = get_object_or_404(User, username=username)
+    following = user.profile.following.select_related('user').all()
+    
+    context = {
+        'profile_user': user,
+        'users_list': following,
+        'list_type': 'Following'
+    }
+    
+    return render(request, 'news/users_list.html', context)
+
+@login_required
+def explore_page(request):
+    """View for the explore page"""
+    return render(request, 'news/explore.html')
+
+def api_news(request):
+    """API endpoint for filtered news"""
+    from django.db.models import Count, F, FloatField, ExpressionWrapper
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Q
+
+    filter_type = request.GET.get('filter', 'trending')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+
+    # Base queryset with all related data
+    news_list = News.objects.select_related(
+        'author', 
+        'author__profile'
+    ).prefetch_related(
+        'images', 
+        'likes', 
+        'comments',
+        'shares',
+        'hashtags'
+    ).all()
+
+    # Apply filters
+    if filter_type == 'trending':
+        # Calculate trending score based on likes, comments, shares, and recency
+        news_list = news_list.annotate(
+            hours_since_created=ExpressionWrapper(
+                (Now() - F('created_at')) / 3600000000,
+                output_field=FloatField()
+            ),
+            engagement_score=ExpressionWrapper(
+                (Count('likes') * 2 + Count('comments') * 3 + Count('shares') * 4) /
+                (F('hours_since_created') + 2),
+                output_field=FloatField()
+            )
+        ).order_by('-engagement_score')
+    elif filter_type == 'for-you':
+        if request.user.is_authenticated:
+            # Show personalized news based on:
+            # 1. News from followed users (higher weight)
+            # 2. News user has liked
+            # 3. News with hashtags similar to what user has interacted with
+            following_users = request.user.profile.following.values_list('user', flat=True)
+            liked_news = request.user.liked_news.all()
+            interacted_hashtags = Hashtag.objects.filter(
+                Q(news_posts__in=liked_news) |
+                Q(news_posts__author__in=following_users)
+            ).distinct()
+
+            news_list = news_list.annotate(
+                relevance_score=ExpressionWrapper(
+                    Case(
+                        When(author__in=following_users, then=10),
+                        When(id__in=liked_news.values_list('id', flat=True), then=5),
+                        When(hashtags__in=interacted_hashtags, then=3),
+                        default=0,
+                        output_field=FloatField(),
+                    ),
+                    output_field=FloatField()
+                )
+            ).filter(
+                Q(author__in=following_users) |
+                Q(id__in=liked_news.values_list('id', flat=True)) |
+                Q(hashtags__in=interacted_hashtags)
+            ).distinct().order_by('-relevance_score', '-created_at')
+        else:
+            news_list = news_list.none()
+    elif filter_type == 'followers':
+        if request.user.is_authenticated:
+            # Show only news from followed users, ordered by most recent
+            following_users = request.user.profile.following.values_list('user', flat=True)
+            news_list = news_list.filter(
+                author__in=following_users
+            ).order_by('-created_at')
+        else:
+            news_list = news_list.none()
+
+    # Paginate results
+    paginator = Paginator(news_list, per_page)
+    try:
+        news_page = paginator.page(page)
+    except (EmptyPage, PageNotAnInteger):
+        news_page = paginator.page(1)
+
+    # Format response
+    news_data = []
+    for news in news_page:
+        news_data.append({
+            'id': news.id,
+            'title': news.title,
+            'content': news.content,
+            'created_at': news.created_at.strftime('%b %d, %Y'),
+            'author': {
+                'username': news.author.username,
+                'avatar': news.author.profile.avatar.url
+            },
+            'images': [{'url': img.image.url} for img in news.images.all()],
+            'video': news.video.url if news.video else None,
+            'likes_count': news.likes.count(),
+            'comments_count': news.comments.count(),
+            'shares_count': news.shares.count(),
+            'views': news.views,
+            'news_type': news.news_type,
+            'hashtags': [tag.name for tag in news.hashtags.all()]
+        })
+
+    return JsonResponse({
+        'news': news_data,
+        'has_more': news_page.has_next()
+    })
 
 @login_required
 def create_news(request):
     if request.method == 'POST':
         try:
+            # Print request.FILES for debugging
+            print("Files in request:", request.FILES)
+            
             form = NewsForm(request.POST, request.FILES)
             if form.is_valid():
                 news = form.save(commit=False)
@@ -218,32 +354,42 @@ def create_news(request):
                 # Save the news object first
                 news.save()
                 
-                if news.news_type == 'short':
-                    if media_type == 'video' and request.FILES.get('video'):
-                        video_file = request.FILES['video']
-                        file_ext = os.path.splitext(video_file.name)[1]
-                        unique_filename = f"{uuid.uuid4()}{file_ext}"
-                        news.video.save(unique_filename, video_file, save=True)
-                    elif media_type == 'image' and request.FILES.getlist('images'):
-                        image = request.FILES.getlist('images')[0]
-                        NewsImage.objects.create(
-                            news=news,
-                            image=image,
-                            caption=f"Image for {news.title}"
-                        )
-                else:  # Long format
-                    if request.FILES.get('video'):
-                        video_file = request.FILES['video']
-                        file_ext = os.path.splitext(video_file.name)[1]
-                        unique_filename = f"{uuid.uuid4()}{file_ext}"
-                        news.video.save(unique_filename, video_file, save=True)
-                    
-                    for image in request.FILES.getlist('images'):
-                        NewsImage.objects.create(
-                            news=news,
-                            image=image,
-                            caption=f"Image for {news.title}"
-                        )
+                try:
+                    if news.news_type == 'short':
+                        if media_type == 'video' and request.FILES.get('video'):
+                            video_file = request.FILES['video']
+                            print("Processing video file:", video_file.name)
+                            file_ext = os.path.splitext(video_file.name)[1]
+                            unique_filename = f"{uuid.uuid4()}{file_ext}"
+                            news.video.save(unique_filename, video_file, save=True)
+                        elif media_type == 'image' and request.FILES.getlist('images'):
+                            image = request.FILES.getlist('images')[0]
+                            print("Processing image file:", image.name)
+                            NewsImage.objects.create(
+                                news=news,
+                                image=image,
+                                caption=f"Image for {news.title}"
+                            )
+                    else:  # Long format
+                        if request.FILES.get('video'):
+                            video_file = request.FILES['video']
+                            print("Processing video file:", video_file.name)
+                            file_ext = os.path.splitext(video_file.name)[1]
+                            unique_filename = f"{uuid.uuid4()}{file_ext}"
+                            news.video.save(unique_filename, video_file, save=True)
+                        
+                        for image in request.FILES.getlist('images'):
+                            print("Processing image file:", image.name)
+                            NewsImage.objects.create(
+                                news=news,
+                                image=image,
+                                caption=f"Image for {news.title}"
+                            )
+                except Exception as e:
+                    print("Error processing media files:", str(e))
+                    news.delete()
+                    messages.error(request, f'Error processing media files: {str(e)}')
+                    return render(request, 'news/create_news.html', {'form': form})
                 
                 # Process hashtags and tagged users
                 hashtags = form.cleaned_data.get('hashtags', '')
@@ -254,10 +400,12 @@ def create_news(request):
                 messages.success(request, 'News article created successfully!')
                 return redirect('news:news_detail', pk=news.pk)
             else:
+                print("Form errors:", form.errors)
                 for field, errors in form.errors.items():
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         except Exception as e:
+            print("Error creating news article:", str(e))
             messages.error(request, f'Error creating news article: {str(e)}')
             if 'news' in locals():
                 news.delete()  # Clean up if there was an error
@@ -430,78 +578,47 @@ def search_news(request):
     
     return render(request, 'news/search_results.html', context)
 
-@login_required
-def follow_user(request, username):
-    user_to_follow = get_object_or_404(User, username=username)
-    
-    if request.user == user_to_follow:
-        messages.error(request, "You cannot follow yourself.")
-        return JsonResponse({'status': 'error', 'message': 'You cannot follow yourself'})
-    
-    if request.method == 'POST':
-        if request.user.profile.following.filter(user=user_to_follow).exists():
-            # Unfollow
-            request.user.profile.following.remove(user_to_follow.profile)
-            is_following = False
-            action = 'unfollowed'
-        else:
-            # Follow
-            request.user.profile.following.add(user_to_follow.profile)
-            is_following = True
-            action = 'followed'
-            
-            # Create notification for the followed user
-            Notification.objects.create(
-                recipient=user_to_follow,
-                notification_type='follow',
-                actor=request.user,
-                content_type=ContentType.objects.get_for_model(Profile),
-                object_id=user_to_follow.profile.id
-            )
-        
-        return JsonResponse({
-            'status': 'success',
-            'is_following': is_following,
-            'follower_count': user_to_follow.profile.followers.count(),
-            'message': f'Successfully {action} {user_to_follow.username}'
-        })
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
 def user_profile(request, username):
     profile_user = get_object_or_404(User, username=username)
-    user_profile = profile_user.profile
-    news_list = News.objects.filter(author=profile_user).order_by('-created_at')
-    
-    # Pagination
-    paginator = Paginator(news_list, 10)
-    page = request.GET.get('page')
-    news_items = paginator.get_page(page)
-    
-    is_following = request.user.is_authenticated and request.user.profile.following.filter(user=profile_user).exists()
+    user_news = News.objects.filter(author=profile_user).order_by('-created_at')
     
     context = {
         'profile_user': profile_user,
-        'user_profile': user_profile,
-        'news_items': news_items,
-        'is_following': is_following,
-        'followers_count': user_profile.followers.count(),
-        'following_count': user_profile.following.count()
+        'user_news': user_news,
     }
+    
     return render(request, 'news/user_profile.html', context)
 
 @login_required
-def followers_list(request, username):
-    user = get_object_or_404(User, username=username)
-    followers = user.profile.followers.all()
-    return render(request, 'news/followers.html', {'user': user, 'followers': followers})
-
-@login_required
-def following_list(request, username):
-    user = get_object_or_404(User, username=username)
-    following = user.profile.following.all()
-    return render(request, 'news/following.html', {'user': user, 'following': following})
+def update_profile_picture(request):
+    if request.method == 'POST' and request.FILES.get('avatar'):
+        try:
+            # Get the uploaded file
+            avatar = request.FILES['avatar']
+            
+            # Delete old avatar if it exists (except default)
+            if request.user.profile.avatar and 'default' not in request.user.profile.avatar.url:
+                if os.path.exists(request.user.profile.avatar.path):
+                    os.remove(request.user.profile.avatar.path)
+            
+            # Save new avatar
+            request.user.profile.avatar = avatar
+            request.user.profile.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'avatar_url': request.user.profile.avatar.url
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'No file uploaded'
+    }, status=400)
 
 @login_required
 def edit_news(request, pk):
@@ -658,11 +775,25 @@ def hashtag_view(request, tag_name):
 
 @login_required
 def profile_settings(request):
-    if request.method == 'POST' and request.FILES.get('avatar'):
+    if request.method == 'POST':
         profile = request.user.profile
-        profile.avatar = request.FILES['avatar']
+        
+        # Handle avatar update
+        if request.FILES.get('avatar'):
+            profile.avatar = request.FILES['avatar']
+            messages.success(request, 'Profile photo updated successfully!')
+        
+        # Handle banner update
+        if request.FILES.get('banner'):
+            profile.banner = request.FILES['banner']
+            messages.success(request, 'Profile banner updated successfully!')
+        
+        # Handle bio update
+        if 'bio' in request.POST:
+            profile.bio = request.POST['bio']
+            messages.success(request, 'Profile bio updated successfully!')
+        
         profile.save()
-        messages.success(request, 'Profile photo updated successfully!')
         return redirect('news:profile_settings')
     
     return render(request, 'news/profile_settings.html')
@@ -676,6 +807,57 @@ def market_data_api(request):
     market_data = get_market_data()
     return JsonResponse(market_data)
 
+def market_news_api(request):
+    """API endpoint for market news"""
+    try:
+        category = request.GET.get('category', 'all')
+        page = int(request.GET.get('page', 1))
+        per_page = 12
+
+        # Build query based on category
+        query = {
+            'all': 'market OR stock OR crypto OR economy',
+            'stocks': 'stock market',
+            'crypto': 'cryptocurrency OR crypto market',
+            'economy': 'economy OR economic news',
+            'analysis': 'market analysis OR financial analysis'
+        }.get(category, 'market')
+
+        response = requests.get(
+            'https://api.worldnewsapi.com/search-news',
+            params={
+                'api-key': settings.WORLD_NEWS_API_KEY,
+                'text': query,
+                'number': per_page,
+                'offset': (page - 1) * per_page,
+                'sort': 'publish-time'
+            }
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            news_items = data.get('news', [])
+            
+            # Process and format news items
+            formatted_news = [{
+                'title': item.get('title'),
+                'summary': item.get('text', '')[:200] + '...',
+                'url': item.get('url'),
+                'image_url': item.get('image', '/static/img/default-news.jpg'),
+                'source': item.get('source'),
+                'category': category.capitalize(),
+                'published_at': item.get('publish_date')
+            } for item in news_items]
+
+            return JsonResponse({
+                'news': formatted_news,
+                'has_more': len(news_items) == per_page
+            })
+        else:
+            return JsonResponse({'error': 'Failed to fetch market news'}, status=response.status_code)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 def user_search_api(request):
     """API endpoint for searching users for tagging"""
     query = request.GET.get('q', '')
@@ -688,3 +870,182 @@ def user_search_api(request):
             } for user in users]
         })
     return JsonResponse({'users': []})
+
+def category_news(request, category):
+    api_key = settings.WORLD_NEWS_API_KEY
+    
+    # Map categories to appropriate search parameters
+    category_mapping = {
+        'india': {
+            'text': 'India OR Indian',
+            'source-countries': 'in'
+        },
+        'international': {
+            'text': 'world OR global OR international',
+            'not-source-countries': 'in'  # Exclude Indian sources
+        },
+        'stocks': {
+            'text': 'stock market OR stocks OR trading OR NYSE OR NASDAQ',
+            'categories': 'business'
+        }
+    }
+    
+    try:
+        params = {
+            'api-key': api_key,
+            'number': 12,  # Number of articles per page
+            'sort': 'publish-time',
+            'language': 'en'
+        }
+        
+        # Add category-specific parameters
+        if category in category_mapping:
+            params.update(category_mapping[category])
+        
+        response = requests.get(
+            'https://api.worldnewsapi.com/search-news',
+            params=params
+        )
+        
+        if response.status_code == 200:
+            news_data = response.json()
+            articles = news_data.get('news', [])
+            
+            # Format articles to match the template expectations
+            formatted_articles = [{
+                'title': article.get('title'),
+                'description': article.get('text', '')[:200] + '...',
+                'urlToImage': article.get('image'),
+                'url': article.get('url'),
+                'source': {'name': article.get('source')}
+            } for article in articles]
+        else:
+            formatted_articles = []
+            
+    except Exception as e:
+        print(f"Error fetching {category} news: {str(e)}")
+        formatted_articles = []
+    
+    context = {
+        'articles': formatted_articles,
+        'category': category.replace('-', ' ').title()
+    }
+    return render(request, 'news/category_news.html', context)
+
+def trending_news(request):
+    api_key = settings.WORLD_NEWS_API_KEY
+    
+    try:
+        params = {
+            'api-key': api_key,
+            'number': 12,
+            'sort': 'popularity',  # Sort by popularity for trending news
+            'language': 'en'
+        }
+        
+        response = requests.get(
+            'https://api.worldnewsapi.com/search-news',
+            params=params
+        )
+        
+        if response.status_code == 200:
+            news_data = response.json()
+            articles = news_data.get('news', [])
+            
+            # Format articles to match the template expectations
+            formatted_articles = [{
+                'title': article.get('title'),
+                'description': article.get('text', '')[:200] + '...',
+                'urlToImage': article.get('image'),
+                'url': article.get('url'),
+                'source': {'name': article.get('source')}
+            } for article in articles]
+        else:
+            formatted_articles = []
+            
+    except Exception as e:
+        print(f"Error fetching trending news: {str(e)}")
+        formatted_articles = []
+    
+    context = {
+        'articles': formatted_articles,
+        'category': 'Trending'
+    }
+    return render(request, 'news/category_news.html', context)
+
+def country_news(request, country_code):
+    api_key = settings.WORLD_NEWS_API_KEY
+    
+    # Map of country codes to full names
+    country_names = {
+        'us': 'United States',
+        'cn': 'China',
+        'ru': 'Russia',
+        'gb': 'United Kingdom',
+        'de': 'Germany',
+        'fr': 'France',
+        'jp': 'Japan',
+        'sa': 'Saudi Arabia',
+        'in': 'India',
+        'kr': 'South Korea',
+        'il': 'Israel',
+        'ua': 'Ukraine'
+    }
+    
+    try:
+        params = {
+            'api-key': api_key,
+            'number': 12,
+            'source-countries': country_code,
+            'language': 'en',
+            'sort': 'publish-time'
+        }
+        
+        response = requests.get(
+            'https://api.worldnewsapi.com/search-news',
+            params=params
+        )
+        
+        if response.status_code == 200:
+            news_data = response.json()
+            articles = news_data.get('news', [])
+            
+            formatted_articles = [{
+                'title': article.get('title'),
+                'description': article.get('text', '')[:200] + '...',
+                'urlToImage': article.get('image'),
+                'url': article.get('url'),
+                'source': {'name': article.get('source')}
+            } for article in articles]
+        else:
+            formatted_articles = []
+            
+    except Exception as e:
+        print(f"Error fetching news for {country_code}: {str(e)}")
+        formatted_articles = []
+    
+    context = {
+        'articles': formatted_articles,
+        'category': f"{country_names.get(country_code, 'Unknown')} News"
+    }
+    return render(request, 'news/category_news.html', context)
+
+def major_countries(request):
+    countries = {
+        'us': 'United States',
+        'cn': 'China',
+        'ru': 'Russia',
+        'gb': 'United Kingdom',
+        'de': 'Germany',
+        'fr': 'France',
+        'jp': 'Japan',
+        'sa': 'Saudi Arabia',
+        'in': 'India',
+        'kr': 'South Korea',
+        'il': 'Israel',
+        'ua': 'Ukraine'
+    }
+    
+    return render(request, 'news/major_countries.html', {
+        'countries': countries
+    })
