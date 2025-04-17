@@ -183,7 +183,12 @@
         <div class="bg-white p-4 rounded-lg shadow sticky top-20">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">Market Updates</h2>
-                <a href="{% url 'news:market_list' %}" class="text-blue-600 hover:text-blue-800 text-sm">View All</a>
+                <a href="{% url 'news:stock_search' %}" class="group inline-flex items-center text-blue-600 hover:text-blue-800 text-sm transition-all duration-300 transform hover:translate-x-1">
+                    View More
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1 group-hover:ml-2 transition-all duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
             </div>
             
             <!-- Market Type Selector -->

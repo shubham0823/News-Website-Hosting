@@ -15,58 +15,62 @@ from django.db import models
 from django.utils import timezone
 import os
 import uuid
+import yfinance as yf
 
 def get_market_data():
-    import requests
+    import yfinance as yf
     
-    # Finnhub API configuration
-    API_KEY = 'cu4gcr1r01qna2rnb3t0cu4gcr1r01qna2rnb3tg'
-    BASE_URL = 'https://finnhub.io/api/v1'
-    
-    # List of stock symbols to track
-    STOCK_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'META']
-    # List of crypto symbols to track
-    CRYPTO_SYMBOLS = ['BINANCE:BTCUSDT', 'BINANCE:ETHUSDT', 'BINANCE:BNBUSDT']
+    # List of popular stock symbols to track
+    STOCK_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA']
+    # List of crypto symbols to track (with Yahoo Finance format)
+    CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'SOL-USD', 'XRP-USD']
     
     stocks_data = []
     crypto_data = []
     
     try:
-        # Fetch stock data
+        # Fetch stock data using yfinance
         for symbol in STOCK_SYMBOLS:
-            quote = requests.get(f'{BASE_URL}/quote', 
-                               params={'symbol': symbol, 'token': API_KEY})
-            profile = requests.get(f'{BASE_URL}/stock/profile2', 
-                                 params={'symbol': symbol, 'token': API_KEY})
-            
-            if quote.status_code == 200 and profile.status_code == 200:
-                quote_data = quote.json()
-                profile_data = profile.json()
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
                 
-                stocks_data.append({
-                    'symbol': symbol,
-                    'name': profile_data.get('name', symbol),
-                    'price': quote_data.get('c', 0),  # Current price
-                    'change_percent': quote_data.get('dp', 0),  # Percent change
-                    'market_cap': profile_data.get('marketCapitalization', 0) * 1000000  # Convert to actual value
-                })
+                if info and 'regularMarketPrice' in info:
+                    stocks_data.append({
+                        'symbol': symbol,
+                        'name': info.get('shortName', symbol),
+                        'price': info.get('regularMarketPrice', 0),
+                        'change_percent': info.get('regularMarketChangePercent', 0),
+                        'market_cap': info.get('marketCap', 0)
+                    })
+            except Exception as e:
+                print(f"Error fetching data for {symbol}: {e}")
         
-        # Fetch crypto data
+        # Sort stocks by market cap to get trending ones
+        stocks_data = sorted(stocks_data, key=lambda x: x.get('market_cap', 0), reverse=True)[:5]
+        
+        # Fetch crypto data using yfinance
         for symbol in CRYPTO_SYMBOLS:
-            quote = requests.get(f'{BASE_URL}/quote', 
-                               params={'symbol': symbol, 'token': API_KEY})
-            
-            if quote.status_code == 200:
-                quote_data = quote.json()
-                clean_symbol = symbol.split(':')[1][:3]  # Extract first 3 chars after BINANCE:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
                 
-                crypto_data.append({
-                    'symbol': clean_symbol,
-                    'name': f'{clean_symbol}/USDT',
-                    'price': quote_data.get('c', 0),
-                    'change_percent': quote_data.get('dp', 0),
-                    'market_cap': 0  # Finnhub doesn't provide market cap for crypto
-                })
+                if info and 'regularMarketPrice' in info:
+                    # Extract the crypto symbol from the Yahoo Finance format
+                    clean_symbol = symbol.split('-')[0]
+                    
+                    crypto_data.append({
+                        'symbol': clean_symbol,
+                        'name': info.get('shortName', f"{clean_symbol}/USD"),
+                        'price': info.get('regularMarketPrice', 0),
+                        'change_percent': info.get('regularMarketChangePercent', 0),
+                        'market_cap': info.get('marketCap', 0) or 0
+                    })
+            except Exception as e:
+                print(f"Error fetching data for crypto {symbol}: {e}")
+        
+        # Take only the top 5 cryptocurrencies
+        crypto_data = crypto_data[:5]
     
     except Exception as e:
         print(f"Error fetching market data: {e}")
@@ -151,42 +155,74 @@ def landing_page(request):
 
 @login_required
 def follow_user(request, username):
-    """Handle follow/unfollow functionality"""
-    if request.method == 'POST':
+    """View to follow/unfollow a user"""
+    try:
         user_to_follow = get_object_or_404(User, username=username)
-        user_profile = request.user.profile
+        
+        # Don't allow users to follow themselves
+        if request.user == user_to_follow:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': "You cannot follow yourself."
+                })
+            messages.error(request, "You cannot follow yourself.")
+            return redirect('news:user_profile', username=username)
+        
+        # Get or create the profiles
+        user_profile = Profile.objects.get_or_create(user=request.user)[0]
+        target_profile = Profile.objects.get_or_create(user=user_to_follow)[0]
         
         # Check if already following
-        is_following = user_profile in user_to_follow.profile.followers.all()
-        
-        if is_following:
+        if target_profile in user_profile.following.all():
             # Unfollow
-            user_to_follow.profile.followers.remove(user_profile)
-            # Create notification for unfollow
+            user_profile.following.remove(target_profile)
+            # Delete notification if exists
             Notification.objects.filter(
                 recipient=user_to_follow,
-                notification_type='follow',
                 actor=request.user,
+                notification_type='follow'
             ).delete()
+            messages.success(request, f"You have unfollowed {username}.")
         else:
             # Follow
-            user_to_follow.profile.followers.add(user_profile)
-            # Create notification for new follow
+            user_profile.following.add(target_profile)
+            # Create notification
+            content_type = ContentType.objects.get_for_model(User)
             Notification.objects.create(
                 recipient=user_to_follow,
-                notification_type='follow',
                 actor=request.user,
-                content_type=ContentType.objects.get_for_model(user_to_follow),
+                notification_type='follow',
+                content_type=content_type,
                 object_id=user_to_follow.id
             )
+            messages.success(request, f"You are now following {username}.")
         
-        return JsonResponse({
-            'status': 'success',
-            'is_following': not is_following,
-            'followers_count': user_to_follow.profile.followers.count()
-        })
+        # Redirect back to the user's profile
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            # For AJAX requests
+            is_following = target_profile in user_profile.following.all()
+            return JsonResponse({
+                'success': True,
+                'is_following': is_following,
+                'follower_count': target_profile.followers.count()
+            })
+        else:
+            # For regular requests
+            return redirect('news:user_profile', username=username)
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    except Exception as e:
+        # Log the error
+        print(f"Error in follow_user: {str(e)}")
+        
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': f"An error occurred: {str(e)}"
+            })
+        
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect('news:user_profile', username=username)
 
 def followers_list(request, username):
     """Display list of followers for a user"""
@@ -1049,3 +1085,151 @@ def major_countries(request):
     return render(request, 'news/major_countries.html', {
         'countries': countries
     })
+
+def state_news(request):
+    """View to display news from Indian states"""
+    states = [
+        'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+        'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+        'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+        'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+        'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+        'Delhi', 'Jammu and Kashmir'
+    ]
+    
+    selected_state = request.GET.get('state', 'Delhi')
+    
+    # Get API key from settings
+    api_key = settings.WORLD_NEWS_API_KEY
+    
+    # Make API request for the selected state
+    url = f"https://api.worldnewsapi.com/search-news?api-key={api_key}&text={selected_state}&number=9&language=en"
+    
+    try:
+        response = requests.get(url)
+        data = response.json()
+        news_articles = data.get('news', [])
+    except Exception as e:
+        news_articles = []
+        print(f"Error fetching state news: {e}")
+    
+    context = {
+        'states': states,
+        'selected_state': selected_state,
+        'news_articles': news_articles,
+    }
+    
+    return render(request, 'news/state_news.html', context)
+
+def stock_search(request):
+    """View to search for stock information"""
+    query = request.GET.get('q', '')
+    results = []
+    
+    # Add this line to define popular stocks
+    popular_stocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'JPM', 'V', 'WMT', 'JNJ', 'PG', 'UNH', 'HD', 'BAC', 'MA', 'XOM', 'ORCL', 'ADBE', 'CRM']
+    
+    if query:
+        try:
+            # Search for stocks matching the query
+            search_results = yf.Tickers(query)
+            
+            # Get detailed information for the first match
+            if hasattr(search_results, 'tickers') and search_results.tickers:
+                for ticker_symbol, ticker in search_results.tickers.items():
+                    try:
+                        info = ticker.info
+                        if info and 'shortName' in info:
+                            # Format the stock data
+                            stock_data = {
+                                'symbol': ticker_symbol,
+                                'name': info.get('shortName', ticker_symbol),
+                                'price': info.get('currentPrice', 0),
+                                'change_percent': info.get('regularMarketChangePercent', 0),
+                                'market_cap': info.get('marketCap', 0),
+                                'volume': info.get('volume', 0),
+                                'pe_ratio': info.get('trailingPE', 0),
+                                'dividend_yield': info.get('dividendYield', 0),
+                                'sector': info.get('sector', 'N/A'),
+                                'industry': info.get('industry', 'N/A'),
+                                'description': info.get('longBusinessSummary', 'No description available')
+                            }
+                            results.append(stock_data)
+                    except Exception as e:
+                        print(f"Error getting info for {ticker_symbol}: {e}")
+        except Exception as e:
+            print(f"Error searching for stocks: {e}")
+    
+    context = {
+        'query': query,
+        'results': results,
+        'popular_stocks': popular_stocks
+    }
+    
+    return render(request, 'news/stock_search.html', context)
+
+def stock_detail(request, symbol):
+    """View to display detailed information about a specific stock"""
+    try:
+        # Get stock data
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        
+        # Get historical data for chart
+        hist = ticker.history(period="1y")
+        
+        # Format the data for the template
+        stock_data = {
+            'symbol': symbol,
+            'name': info.get('shortName', symbol),
+            'price': info.get('currentPrice', 0),
+            'change': info.get('regularMarketChange', 0),
+            'change_percent': info.get('regularMarketChangePercent', 0),
+            'market_cap': info.get('marketCap', 0),
+            'volume': info.get('volume', 0),
+            'avg_volume': info.get('averageVolume', 0),
+            'pe_ratio': info.get('trailingPE', 0),
+            'eps': info.get('trailingEps', 0),
+            'dividend_yield': info.get('dividendYield', 0),
+            'beta': info.get('beta', 0),
+            'high_52week': info.get('fiftyTwoWeekHigh', 0),
+            'low_52week': info.get('fiftyTwoWeekLow', 0),
+            'sector': info.get('sector', 'N/A'),
+            'industry': info.get('industry', 'N/A'),
+            'description': info.get('longBusinessSummary', 'No description available'),
+            'website': info.get('website', '#'),
+            'chart_data': {
+                'dates': hist.index.strftime('%Y-%m-%d').tolist(),
+                'prices': hist['Close'].tolist(),
+                'volumes': hist['Volume'].tolist()
+            }
+        }
+        
+        # Get news related to this stock
+        api_key = settings.WORLD_NEWS_API_KEY
+        news_articles = []
+        
+        try:
+            response = requests.get(
+                f'https://api.worldnewsapi.com/search-news',
+                params={
+                    'api-key': api_key,
+                    'text': f"{info.get('shortName', symbol)} stock",
+                    'number': 5
+                }
+            )
+            if response.status_code == 200:
+                news_articles = response.json().get('news', [])
+        except Exception as e:
+            print(f"Error fetching stock news: {str(e)}")
+        
+        context = {
+            'stock': stock_data,
+            'news_articles': news_articles
+        }
+        
+        return render(request, 'news/stock_detail.html', context)
+    
+    except Exception as e:
+        messages.error(request, f"Error retrieving stock data: {str(e)}")
+        return redirect('news:stock_search')

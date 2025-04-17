@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ stock.name }} ({{ stock.symbol }}) - Stock Details{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-4">
+        <a href="{% url 'news:stock_search' %}" class="text-blue-600 hover:underline">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
+            Back to Search
+        </a>
+    </div>
+
+    <!-- Stock Header -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center">
+            <div>
+                <h1 class="text-3xl font-bold">{{ stock.name }} ({{ stock.symbol }})</h1>
+                <p class="text-gray-600">{{ stock.sector }} | {{ stock.industry }}</p>
+            </div>
+            <div class="mt-4 md:mt-0">
+                <div class="text-3xl font-bold">${{ stock.price|floatformat:2 }}</div>
+                <div class="flex items-center">
+                    <span class="{% if stock.change > 0 %}text-green-600{% elif stock.change < 0 %}text-red-600{% endif %}">
+                        {% if stock.change > 0 %}+{% endif %}${{ stock.change|floatformat:2 }} ({{ stock.change_percent|floatformat:2 }}%)
+                    </span>
+                    {% if stock.change > 0 %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd" />
+                    </svg>
+                    {% elif stock.change < 0 %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clip-rule="evenodd" />
+                    </svg>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Chart -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Price History (1 Year)</h2>
+        <div class="h-80">
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Stock Details -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Key Statistics -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Key Statistics</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-600">Market Cap</p>
+                    <p class="font-semibold">
+                        {% if stock.market_cap >= 1000000000000 %}
+                            ${{ stock.market_cap|floatformat:-2|slice:":-12" }}.{{ stock.market_cap|floatformat:0|slice:"-12:-10" }}T
+                        {% elif stock.market_cap >= 1000000000 %}
+                            ${{ stock.market_cap|floatformat:-2|slice:":-9" }}.{{ stock.market_cap|floatformat:0|slice:"-9:-7" }}B
+                        {% elif stock.market_cap >= 1000000 %}
+                            ${{ stock.market_cap|floatformat:-2|slice:":-6" }}.{{ stock.market_cap|floatformat:0|slice:"-6:-4" }}M
+                        {% else %}
+                            ${{ stock.market_cap|floatformat:0 }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-gray-600">P/E Ratio</p>
+                    <p class="font-semibold">{{ stock.pe_ratio|floatformat:2 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">EPS</p>
+                    <p class="font-semibold">${{ stock.eps|floatformat:2 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Dividend Yield</p>
+                    <p class="font-semibold">{{ stock.dividend_yield|floatformat:2 }}%</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Beta</p>
+                    <p class="font-semibold">{{ stock.beta|floatformat:2 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Volume</p>
+                    <p class="font-semibold">{{ stock.volume|floatformat:0 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Avg. Volume</p>
+                    <p class="font-semibold">{{ stock.avg_volume|floatformat:0 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">52-Week High</p>
+                    <p class="font-semibold">${{ stock.high_52week|floatformat:2 }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">52-Week Low</p>
+                    <p class="font-semibold">${{ stock.low_52week|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Company Description -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">About {{ stock.name }}</h2>
+            <p class="text-gray-700">{{ stock.description }}</p>
+            {% if stock.website != '#' %}
+            <div class="mt-4">
+                <a href="{{ stock.website }}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd" />
+                    </svg>
+                    Visit Website
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Related News -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Related News</h2>
+        {% if news_articles %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for article in news_articles %}
+                    <div class="border rounded-lg overflow-hidden">
+                        {% if article.image %}
+                            <img src="{{ article.image }}" alt="{{ article.title }}" class="w-full h-48 object-cover">
+                        {% else %}
+                            <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                <span class="text-gray-500">No image available</span>
+                            </div>
+                        {% endif %}
+                        <div class="p-4">
+                            <h3 class="font-semibold mb-2">{{ article.title }}</h3>
+                            <p class="text-gray-600 text-sm mb-3">{{ article.text|truncatechars:100 }}</p>
+                            <a href="{{ article.url }}" target="_blank" class="text-blue-600 hover:underline text-sm">Read more</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-600">No related news articles found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        
+        // Parse the chart data from the template
+        const dates = {{ stock.chart_data.dates|safe }};
+        const prices = {{ stock.chart_data.prices|safe }};
+        const volumes = {{ stock.chart_data.volumes|safe }};
+        
+        // Create the chart
+        const stockChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Price ($)',
+                    data: prices,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

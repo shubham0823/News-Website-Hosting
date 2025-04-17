@@ -44,24 +44,26 @@
                         </div>
 
                         <!-- Follow Button -->
-                        {% if user.is_authenticated and user != profile_user %}
-                        <button id="followButton" 
-                                data-username="{{ profile_user.username }}"
-                                class="relative px-4 py-2 rounded-full {% if user.profile in profile_user.profile.followers.all %}bg-gray-200 text-gray-800{% else %}bg-blue-600 text-white{% endif %} hover:opacity-90 transition-all duration-200 disabled:opacity-50">
-                            <span class="inline-flex items-center">
-                                <span class="follow-text">
-                                    {% if user.profile in profile_user.profile.followers.all %}
-                                        Following
+                        {% if user.is_authenticated and user.username != profile_user.username %}
+                        <div class="mt-4">
+                            <form id="follow-form" action="{% url 'news:follow_user' profile_user.username %}" method="post" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" id="follow-button" class="px-4 py-2 rounded-md text-sm font-medium 
+                                    {% if profile_user.profile in user.profile.following.all %}
+                                        bg-gray-200 text-gray-800 hover:bg-gray-300
+                                    {% else %}
+                                        bg-blue-600 text-white hover:bg-blue-700
+                                    {% endif %}
+                                    transition-colors"
+                                    data-original-text="{% if profile_user.profile in user.profile.following.all %}Unfollow{% else %}Follow{% endif %}">
+                                    {% if profile_user.profile in user.profile.following.all %}
+                                        Unfollow
                                     {% else %}
                                         Follow
                                     {% endif %}
-                                </span>
-                                <svg class="hidden loading-spinner ml-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </span>
                         </button>
+                            </form>
+                        </div>
                         {% endif %}
                     </div>
 
@@ -213,76 +215,87 @@
         });
     }
 
-    // Follow/Unfollow functionality
-    const followButton = document.getElementById('followButton');
-    if (followButton) {
-        followButton.addEventListener('click', async function() {
-            const username = this.dataset.username;
-            const loadingSpinner = this.querySelector('.loading-spinner');
-            const followText = this.querySelector('.follow-text');
+    // Follow/Unfollow functionality - Improved version
+    document.addEventListener('DOMContentLoaded', function() {
+        const followForm = document.getElementById('follow-form');
+        const followButton = document.getElementById('follow-button');
+        
+        if (followForm && followButton) {
+            // Store the original button text
+            const originalText = followButton.textContent.trim();
+            followButton.setAttribute('data-original-text', originalText);
             
-            try {
-                // Disable button and show loading state
-                this.disabled = true;
-                loadingSpinner.classList.remove('hidden');
+            followForm.addEventListener('submit', function(e) {
+                e.preventDefault();
                 
-                const response = await fetch(`/news/user/${username}/follow/`, {
+                // Show loading state
+                followButton.disabled = true;
+                followButton.textContent = 'Processing...';
+                
+                // Get the CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Make the AJAX request
+                fetch(followForm.action, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
-                        'Content-Type': 'application/json'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
                     }
-                });
-                
-                const data = await response.json();
-                if (data.status === 'success') {
-                    // Update button appearance
-                    if (data.is_following) {
-                        followText.textContent = 'Following';
-                        this.classList.remove('bg-blue-600', 'text-white');
-                        this.classList.add('bg-gray-200', 'text-gray-800');
-                        
-                        // Add unfollow confirmation on hover
-                        this.addEventListener('mouseenter', function() {
-                            if (followText.textContent === 'Following') {
-                                followText.textContent = 'Unfollow';
-                                this.classList.add('bg-red-100', 'text-red-600');
-                            }
-                        });
-                        
-                        this.addEventListener('mouseleave', function() {
-                            if (followText.textContent === 'Unfollow') {
-                                followText.textContent = 'Following';
-                                this.classList.remove('bg-red-100', 'text-red-600');
-                            }
-                        });
-                    } else {
-                        followText.textContent = 'Follow';
-                        this.classList.remove('bg-gray-200', 'text-gray-800', 'bg-red-100', 'text-red-600');
-                        this.classList.add('bg-blue-600', 'text-white');
-                        
-                        // Remove hover events
-                        this.removeEventListener('mouseenter', null);
-                        this.removeEventListener('mouseleave', null);
-                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Follow response:', data);
                     
-                    // Update followers count with animation
-                    const followersCount = document.getElementById('followersCount');
-                    followersCount.style.transform = 'scale(1.1)';
-                    followersCount.textContent = data.followers_count;
-                    setTimeout(() => {
-                        followersCount.style.transform = 'scale(1)';
-                    }, 200);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            } finally {
-                // Re-enable button and hide loading state
-                this.disabled = false;
-                loadingSpinner.classList.add('hidden');
-            }
-        });
-    }
+                    if (data.success) {
+                        // Update follower count with animation
+                        const followersCount = document.getElementById('followersCount');
+                        if (followersCount) {
+                            followersCount.textContent = data.follower_count;
+                            followersCount.style.transition = 'transform 0.3s';
+                            followersCount.style.transform = 'scale(1.2)';
+                            setTimeout(() => {
+                                followersCount.style.transform = 'scale(1)';
+                            }, 300);
+                        }
+                        
+                        // Update button style and text
+                        if (data.is_following) {
+                            followButton.textContent = 'Unfollow';
+                            followButton.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+                            followButton.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                        } else {
+                            followButton.textContent = 'Follow';
+                            followButton.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                            followButton.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+                        }
+                    } else {
+                        // Restore original button text
+                        followButton.textContent = followButton.getAttribute('data-original-text');
+                        console.error('Follow action failed:', data.message || 'Unknown error');
+                        alert('Failed to follow/unfollow. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during follow/unfollow:', error);
+                    // Restore original button text
+                    followButton.textContent = followButton.getAttribute('data-original-text');
+                    alert('An error occurred while processing your request. Please try again.');
+                })
+                .finally(() => {
+                    // Re-enable button
+                    followButton.disabled = false;
+                });
+            });
+        }
+    });
 
     // Video hover play functionality
     document.querySelectorAll('.hover-play-video').forEach(video => {

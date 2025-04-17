@@ -129,10 +129,31 @@
                             <i class="fas fa-bell"></i>
                         </a>
                     <!-- Profile -->
-                    <a href="{% url 'news:user_profile' user.username %}" class="flex items-center space-x-2">
-                        <img class="h-8 w-8 rounded-full object-cover" src="{{ user.profile.avatar.url }}" alt="{{ user.username }}">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.username }}</span>
-                    </a>
+                    <div class="relative">
+                        <button id="user-menu-button" aria-expanded="false" aria-haspopup="true" class="flex items-center">
+                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="h-8 w-8 rounded-full">
+                            <span class="ml-2 text-sm font-medium hidden md:block">{{ user.username }}</span>
+                            <svg class="ml-1 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown menu -->
+                        <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                            <a href="{% url 'news:user_profile' user.username %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</a>
+                            <a href="{% url 'news:profile_settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                            <a href="{% url 'news:notifications' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                Notifications
+                                {% if unread_notifications_count > 0 %}
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    {{ unread_notifications_count }}
+                                </span>
+                                {% endif %}
+                            </a>
+                            <div class="border-t border-gray-100"></div>
+                            <a href="{% url 'accounts:logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
+                        </div>
+                    </div>
                     <!-- Logout -->
                     <a href="{% url 'accounts:logout' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Logout</a>
                     {% else %}
@@ -152,6 +173,8 @@
                     <a href="{% url 'news:category_news' 'stocks' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Stocks</a>
                     <a href="{% url 'news:category_news' 'international' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">International News</a>
                     <a href="{% url 'news:major_countries' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Major Country</a>
+                    <a href="{% url 'news:state_news' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Indian State</a>
+                    <a href="{% url 'news:stock_search' %}" class="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white whitespace-nowrap">Stock Search</a>
                 </div>
             </div>
         </div>
@@ -261,7 +284,7 @@
 
     {% block extra_js %}{% endblock %}
     <script>
-        // Profile dropdown toggle
+        // User menu dropdown functionality
         const userMenuButton = document.getElementById('user-menu-button');
         const userMenu = document.getElementById('user-menu');
         
@@ -271,7 +294,7 @@
                 this.setAttribute('aria-expanded', !expanded);
                 userMenu.classList.toggle('hidden');
             });
-
+            
             // Close the dropdown when clicking outside
             document.addEventListener('click', function(event) {
                 if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Stock Search{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Stock Search</h1>
+    
+    <!-- Search form -->
+    <div class="mb-8">
+        <form method="get" action="{% url 'news:stock_search' %}" class="flex flex-wrap items-center">
+            <input type="text" name="q" value="{{ query }}" placeholder="Enter stock symbol (e.g., AAPL, MSFT, GOOGL)" 
+                   class="flex-1 border rounded px-4 py-2 mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Search
+            </button>
+        </form>
+    </div>
+    
+    <!-- Search results -->
+    <div class="space-y-6">
+        {% if results %}
+            <h2 class="text-2xl font-semibold mb-4">Search Results for "{{ query }}"</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 bg-gray-100 text-left">Symbol</th>
+                            <th class="py-3 px-4 bg-gray-100 text-left">Name</th>
+                            <th class="py-3 px-4 bg-gray-100 text-right">Price</th>
+                            <th class="py-3 px-4 bg-gray-100 text-right">Change %</th>
+                            <th class="py-3 px-4 bg-gray-100 text-right">Market Cap</th>
+                            <th class="py-3 px-4 bg-gray-100 text-left">Sector</th>
+                            <th class="py-3 px-4 bg-gray-100 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in results %}
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="py-3 px-4 font-medium">{{ stock.symbol }}</td>
+                                <td class="py-3 px-4">{{ stock.name }}</td>
+                                <td class="py-3 px-4 text-right">${{ stock.price|floatformat:2 }}</td>
+                                <td class="py-3 px-4 text-right {% if stock.change_percent > 0 %}text-green-600{% elif stock.change_percent < 0 %}text-red-600{% endif %}">
+                                    {{ stock.change_percent|floatformat:2 }}%
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    {% if stock.market_cap >= 1000000000000 %}
+                                        ${{ stock.market_cap|floatformat:0|slice:":-12" }}.{{ stock.market_cap|floatformat:0|slice:"-12:-10" }}T
+                                    {% elif stock.market_cap >= 1000000000 %}
+                                        ${{ stock.market_cap|floatformat:0|slice:":-9" }}.{{ stock.market_cap|floatformat:0|slice:"-9:-7" }}B
+                                    {% elif stock.market_cap >= 1000000 %}
+                                        ${{ stock.market_cap|floatformat:0|slice:":-6" }}.{{ stock.market_cap|floatformat:0|slice:"-6:-4" }}M
+                                    {% else %}
+                                        ${{ stock.market_cap|floatformat:0 }}
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4">{{ stock.sector }}</td>
+                                <td class="py-3 px-4 text-center">
+                                    <a href="{% url 'news:stock_detail' stock.symbol %}" class="text-blue-600 hover:underline">View Details</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% elif query %}
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            No stocks found matching "{{ query }}". Please try another search term.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            Enter a stock symbol or company name to search for stock information.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <h2 class="text-2xl font-semibold mt-8 mb-4">Popular Stocks</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {% with popular_stocks="AAPL,MSFT,GOOGL,AMZN,META,TSLA,NVDA,JPM,V,WMT,JNJ,PG,UNH,HD,BAC,MA,XOM,ORCL,ADBE,CRM"|split:"," %}
+                    {% for symbol in popular_stocks %}
+                        <a href="{% url 'news:stock_detail' symbol %}" class="block p-4 border rounded hover:bg-gray-50 transition-colors">
+                            <div class="font-bold">{{ symbol }}</div>
+                        </a>
+                    {% endfor %}
+                {% endwith %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

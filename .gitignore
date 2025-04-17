@@ -7,3 +7,5 @@ venv/
 ENV/
 staticfiles/
 media/ 
+.vercel
+.qodo

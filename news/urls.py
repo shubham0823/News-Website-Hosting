@@ -35,4 +35,7 @@ urlpatterns = [
     path('trending/', views.trending_news, name='trending_news'),
     path('country/<str:country_code>/', views.country_news, name='country_news'),
     path('major-countries/', views.major_countries, name='major_countries'),
+    path('state-news/', views.state_news, name='state_news'),
+    path('stocks/search/', views.stock_search, name='stock_search'),
+    path('stocks/<str:symbol>/', views.stock_detail, name='stock_detail'),
 ] 
